@@ -1,35 +1,25 @@
-"""Drive a Hue entertainment area from whatever the microphone hears.
-
-    pip install "hueify[entertainment]" sounddevice numpy
-    hueify setup                      # also prints HUE_CLIENT_KEY
-
-    python experiments/light_organ_stream.py --area "Musikbereich"
-    python experiments/light_organ_stream.py --mode sweep --sensitivity 1.2
-
-Check the analysis with ``mic_capture.py`` first if the lights look wrong - it
-is almost always the microphone, not the mapping.
-"""
-
-from __future__ import annotations
-
 import argparse
 import asyncio
 import contextlib
 
 from hueify import Hueify
 from hueify.entertainment import EntertainmentStream
-from light_organ.analysis import (
-    DEFAULT_SENSITIVITY,
-    HIGHEST_FREQUENCY,
-    SpectralAnalyzer,
-    band_edges,
-)
-from light_organ.audio import AudioCapture, input_devices, resolve_device
-from light_organ.console import sparkline
-from light_organ.visuals import DEFAULT_GAMMA, MODES, Visual, channel_positions
 
-DEFAULT_AREA = "Musikbereich"
-REPORT_INTERVAL = 1.0
+from examples.console import sparkline
+from hue_beatsync.analysis import SpectralAnalyzer, band_edges
+from hue_beatsync.audio import AudioCapture, input_devices, resolve_device
+from hue_beatsync.visuals import (
+    Visual,
+    channel_positions,
+    create_visual,
+    visual_names,
+)
+
+_DEFAULT_AREA = "Musikbereich"
+_DEFAULT_SENSITIVITY = 1.2
+_DEFAULT_GAMMA = 1.0
+_DEFAULT_MAX_FREQUENCY = 14_000.0
+_REPORT_INTERVAL = 1.0
 
 
 async def main() -> None:
@@ -58,7 +48,7 @@ async def main() -> None:
         with AudioCapture(device, analyzer.feed) as capture:
             async with hue.entertainment.stream(area, rate=args.rate) as stream:
                 positions = channel_positions(stream.channels)
-                visual = MODES[args.mode](positions, analyzer, gamma=args.gamma)
+                visual = create_visual(args.mode, positions, analyzer, gamma=args.gamma)
                 print(
                     f"Streaming {args.mode} to {args.area}, "
                     f"{len(stream.channels)} channels at {stream.rate} fps, "
@@ -98,7 +88,7 @@ async def _report(
 ) -> None:
     """A live line to judge quality by: is it hearing beats, is it keeping up."""
     while True:
-        await asyncio.sleep(REPORT_INTERVAL)
+        await asyncio.sleep(_REPORT_INTERVAL)
         if capture.failure is not None:
             return
 
@@ -116,30 +106,33 @@ async def _report(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Stream microphone-driven visuals to a Hue entertainment area."
     )
-    parser.add_argument("--area", default=DEFAULT_AREA, help="entertainment area name")
+    parser.add_argument("--area", default=_DEFAULT_AREA, help="entertainment area name")
     parser.add_argument(
-        "--mode", default="pulse", choices=tuple(MODES), help="which light show to run"
+        "--mode",
+        default="pulse",
+        choices=visual_names(),
+        help="which light show to run",
     )
     parser.add_argument("--device", help="input device index or part of its name")
     parser.add_argument("--seconds", type=float, help="stop after this long")
     parser.add_argument(
         "--sensitivity",
         type=float,
-        default=DEFAULT_SENSITIVITY,
+        default=_DEFAULT_SENSITIVITY,
         help="beat threshold in standard deviations, lower finds more beats",
     )
     parser.add_argument(
         "--gamma",
         type=float,
-        default=DEFAULT_GAMMA,
+        default=_DEFAULT_GAMMA,
         help="brightness contrast, above 1 darkens the quiet parts",
     )
     parser.add_argument(
         "--max-freq",
         type=float,
-        default=HIGHEST_FREQUENCY,
+        default=_DEFAULT_MAX_FREQUENCY,
         help="squeeze the bands below this, for a mic that cannot hear higher",
     )
     parser.add_argument("--rate", type=int, default=50, help="frames per second")

@@ -1,28 +1,3 @@
-"""Record to a WAV file and report absolute levels, to find out what a mic hears.
-
-The light show normalizes everything against the recent peak, which is right for
-driving lamps and wrong for debugging: it makes a nearly dead signal look busy.
-This prints dBFS, which does not move when the signal is quiet.
-
-    python experiments/record.py                    # 5 s, then play the file
-    python experiments/record.py --device 18 --seconds 10
-    python experiments/record.py --baseline         # silence first, then music
-
-Rough guide, full scale being 0 dBFS:
-
-    above -20   healthy, plenty to work with
-    -40 to -20  usable, the analysis will manage
-    -60 to -40  very weak, expect a sluggish light show
-    below -60   nothing is arriving
-
-The flatness figure separates a signal from a noise floor. Music has energy in
-some places and not others, so it scores low. Hiss is spread evenly and scores
-near 1 - a loud reading with flatness near 1 means the microphone is picking up
-its own electronics, not the room.
-"""
-
-from __future__ import annotations
-
 import argparse
 import math
 import time
@@ -32,11 +7,12 @@ from pathlib import Path
 
 import numpy as np
 import sounddevice as sd
-from light_organ.audio import AudioDevice, resolve_device
-from light_organ.console import bar
 
-WINDOW = 2048
-SILENT_FLOOR = -90.0
+from examples.console import bar
+from hue_beatsync.audio import AudioDevice, resolve_device
+
+_WINDOW = 2048
+_SILENT_FLOOR = -90.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,9 +54,9 @@ class Recording:
         """Spectral flatness: near 0 is tonal, near 1 is featureless noise."""
         spectra = [
             np.abs(
-                np.fft.rfft(self.samples[start : start + WINDOW] * np.hanning(WINDOW))
+                np.fft.rfft(self.samples[start : start + _WINDOW] * np.hanning(_WINDOW))
             )
-            for start in range(0, len(self.samples) - WINDOW, WINDOW)
+            for start in range(0, len(self.samples) - _WINDOW, _WINDOW)
         ]
         if not spectra:
             return 1.0
@@ -106,9 +82,9 @@ class Recording:
 
 def dbfs(amplitude: float) -> float:
     return (
-        SILENT_FLOOR
+        _SILENT_FLOOR
         if amplitude <= 0
-        else max(20 * math.log10(amplitude), SILENT_FLOOR)
+        else max(20 * math.log10(amplitude), _SILENT_FLOOR)
     )
 
 
@@ -177,7 +153,7 @@ def report(recording: Recording) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Record microphone input and report absolute signal quality."
     )
     parser.add_argument("--device", help="input device index or part of its name")
     parser.add_argument("--seconds", type=float, default=5.0)

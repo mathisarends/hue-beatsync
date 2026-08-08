@@ -1,13 +1,3 @@
-"""Turning raw audio into the handful of numbers a light show needs.
-
-The chain is a short time Fourier transform, a split into frequency bands, and
-an onset detector on top of the spectral flux. Everything is normalized against
-what the room has recently been doing, so the result does not depend on how
-loud the speakers are or how the track was mastered.
-"""
-
-from __future__ import annotations
-
 import math
 import statistics
 from collections import deque
@@ -16,16 +6,16 @@ from itertools import pairwise
 
 import numpy as np
 
-from light_organ.smoothing import Envelope, PeakFollower
+from hue_beatsync.smoothing import Envelope, PeakFollower
 
 BAND_NAMES = ("bass", "low mid", "mid", "high mid", "treble")
 
-LOWEST_FREQUENCY = 30.0
-HIGHEST_FREQUENCY = 14000.0
+_LOWEST_FREQUENCY = 30.0
+_HIGHEST_FREQUENCY = 14000.0
 
 
 def band_edges(
-    top: float = HIGHEST_FREQUENCY, bottom: float = LOWEST_FREQUENCY
+    top: float = _HIGHEST_FREQUENCY, bottom: float = _LOWEST_FREQUENCY
 ) -> tuple[float, ...]:
     """Band boundaries spaced evenly on a log scale, which is how hearing works.
 
@@ -41,32 +31,26 @@ def band_edges(
     return tuple(bottom * ratio**index for index in range(len(BAND_NAMES) + 1))
 
 
-BAND_EDGES = band_edges()
+_BAND_EDGES = band_edges()
 
-WINDOW_SIZE = 2048
-FLUX_HISTORY = 128
+_WINDOW_SIZE = 2048
+_FLUX_HISTORY = 128
 
-CENTROID_RANGE = (80.0, 6000.0)
+_CENTROID_RANGE = (80.0, 6000.0)
 
-MIN_BEAT_GAP = 0.15
-SILENCE_RMS = 2e-3
+_MIN_BEAT_GAP = 0.15
+_SILENCE_RMS = 2e-3
 
-# How many standard deviations above the recent average a flux peak has to be.
-# Measured against a synthetic 120 BPM track: 1.2 catches 42 of 48 onsets,
-# 1.5 drops to 34, and 2.0 keeps only the kicks.
-DEFAULT_SENSITIVITY = 1.2
+_DEFAULT_SENSITIVITY = 1.2
 
 _BAND_COUNT = len(BAND_NAMES)
 
 
 @dataclass(frozen=True, slots=True)
 class AudioFeatures:
-    """One snapshot of what the music is doing.
+    """An immutable analysis snapshot.
 
-    ``beats`` counts every onset since the start instead of flagging the
-    current block. The audio thread produces roughly 90 snapshots per second
-    and the light stream reads 50, so a boolean would drop beats; a counter
-    lets a reader see exactly how many it missed.
+    ``beats`` is a cumulative counter so slower consumers do not miss onsets.
     """
 
     levels: tuple[float, ...]
@@ -82,7 +66,7 @@ class AudioFeatures:
         return self.levels[BAND_NAMES.index(name)]
 
 
-SILENCE = AudioFeatures(
+_SILENCE = AudioFeatures(
     levels=(0.0,) * _BAND_COUNT,
     energy=0.0,
     centroid=0.5,
@@ -95,20 +79,24 @@ SILENCE = AudioFeatures(
 
 
 class SpectralAnalyzer:
-    """Analyzes blocks on the audio thread and publishes the latest features.
-
-    ``feed`` runs on PortAudio's thread while ``features`` is read from the
-    event loop. No lock is needed because the only shared state is a single
-    reference to a frozen snapshot, and rebinding it is atomic.
-    """
+    """Analyze audio blocks and expose the latest immutable snapshot."""
 
     def __init__(
         self,
         samplerate: int,
-        window_size: int = WINDOW_SIZE,
-        sensitivity: float = DEFAULT_SENSITIVITY,
-        edges: tuple[float, ...] = BAND_EDGES,
+        window_size: int = _WINDOW_SIZE,
+        sensitivity: float = _DEFAULT_SENSITIVITY,
+        edges: tuple[float, ...] = _BAND_EDGES,
     ) -> None:
+        if samplerate <= 0:
+            raise ValueError("samplerate must be positive")
+        if window_size <= 0:
+            raise ValueError("window_size must be positive")
+        if len(edges) != _BAND_COUNT + 1 or any(
+            low >= high for low, high in pairwise(edges)
+        ):
+            raise ValueError(f"edges must contain {_BAND_COUNT + 1} increasing values")
+
         self._samplerate = samplerate
         self._window = np.hanning(window_size).astype(np.float32)
         self._buffer = np.zeros(window_size, dtype=np.float32)
@@ -121,14 +109,12 @@ class SpectralAnalyzer:
 
         self._followers = [PeakFollower() for _ in range(_BAND_COUNT)]
         self._energy_follower = PeakFollower()
-        # Symmetric, so this is a plain low pass: the raw centroid jumps across
-        # its whole range between blocks, which would show up as color noise.
         self._centroid = Envelope(0.12, 0.12, value=0.5)
         self._previous_spectrum = np.zeros(len(frequencies), dtype=np.float32)
-        self._flux_history: deque[float] = deque(maxlen=FLUX_HISTORY)
+        self._flux_history: deque[float] = deque(maxlen=_FLUX_HISTORY)
         self._beat_times: deque[float] = deque(maxlen=12)
 
-        self._features = SILENCE
+        self._features = _SILENCE
         self._elapsed = 0.0
         self._last_beat = -math.inf
         self._beats = 0
@@ -146,7 +132,7 @@ class SpectralAnalyzer:
         self._push(block)
 
         loudness = float(np.sqrt(np.mean(np.square(self._buffer))))
-        if loudness < SILENCE_RMS:
+        if loudness < _SILENCE_RMS:
             self._decay(delta, loudness)
             return
 
@@ -182,11 +168,6 @@ class SpectralAnalyzer:
         )
 
     def _detect_beat(self, spectrum: np.ndarray) -> float:
-        """Spectral flux against an adaptive threshold.
-
-        Only rising bins count: a note starting is energy appearing across the
-        spectrum at once, while a note fading out is not an onset.
-        """
         flux = float(np.sum(np.maximum(spectrum - self._previous_spectrum, 0.0)))
         self._previous_spectrum = spectrum
 
@@ -197,7 +178,7 @@ class SpectralAnalyzer:
 
         mean = statistics.fmean(history)
         threshold = mean + self._sensitivity * statistics.pstdev(history, mean)
-        if flux <= threshold or self._elapsed - self._last_beat < MIN_BEAT_GAP:
+        if flux <= threshold or self._elapsed - self._last_beat < _MIN_BEAT_GAP:
             return 0.0
 
         self._last_beat = self._elapsed
@@ -206,11 +187,6 @@ class SpectralAnalyzer:
         return min((flux - threshold) / max(threshold, 1e-6), 1.0)
 
     def _bpm(self) -> float | None:
-        """A rough tempo from the gaps between onsets.
-
-        Gaps outside 50..240 BPM are dropped rather than folded into the
-        estimate: they are usually a missed beat or an extra percussive hit.
-        """
         if len(self._beat_times) < 4:
             return None
         gaps = [
@@ -238,23 +214,17 @@ class SpectralAnalyzer:
 
 
 def _centroid_of(spectrum: np.ndarray, log_frequencies: np.ndarray) -> float:
-    """Where the energy sits, on a log scale, as 0 (dark) to 1 (bright)."""
     total = float(spectrum.sum())
     if total <= 0.0:
         return 0.5
     center = float(np.dot(spectrum, log_frequencies) / total)
-    low, high = (math.log(edge) for edge in CENTROID_RANGE)
+    low, high = (math.log(edge) for edge in _CENTROID_RANGE)
     return min(max((center - low) / (high - low), 0.0), 1.0)
 
 
 def _band_slices(
     frequencies: np.ndarray, edges: tuple[float, ...]
 ) -> tuple[np.ndarray, ...]:
-    """Bin indices per band, with at least one bin each.
-
-    The bass band is only a few bins wide at this window size, so an empty
-    slice is a real risk and would make ``mean`` return NaN.
-    """
     slices = []
     for low, high in pairwise(edges):
         indices = np.flatnonzero((frequencies >= low) & (frequencies < high))

@@ -1,39 +1,19 @@
-"""Record the same moment through several microphones and compare what arrives.
-
-Not every input hears music. A speakerphone runs echo cancellation and noise
-suppression, which is built to remove exactly what comes out of the speakers,
-and it is band limited to speech on top of that - so the bass simply is not in
-the signal, and a light organ has nothing to work with.
-
-Play something with a solid beat, then:
-
-    python experiments/compare_inputs.py
-    python experiments/compare_inputs.py --seconds 5 --device 17 --device 32
-
-The bars are the raw spectrum, not the normalized levels the light show uses:
-here the point is how the bands compare to each other on one device, and how
-loud that device is against the others.
-"""
-
-from __future__ import annotations
-
 import argparse
 from dataclasses import dataclass
 from itertools import pairwise
 
 import numpy as np
 import sounddevice as sd
-from light_organ.analysis import BAND_EDGES, BAND_NAMES
-from light_organ.audio import AudioDevice, input_devices, resolve_device
-from light_organ.console import bar
 
-WINDOW = 2048
-BAND_LABELS = ("BASS", "LOW", "MID", "HIGH", "TRE")
+from examples.console import bar
+from hue_beatsync.analysis import BAND_NAMES, band_edges
+from hue_beatsync.audio import AudioDevice, input_devices, resolve_device
 
-# Below this a device is not hearing the room, it is showing its own noise
-# floor. Its band shape is meaningless and must not be drawn: dividing noise by
-# its own maximum produces five full bars, which reads as a perfect microphone.
-DEAF = 1e-3
+_WINDOW = 2048
+_BAND_LABELS = ("BASS", "LOW", "MID", "HIGH", "TRE")
+_BAND_EDGES = band_edges()
+
+_DEAF = 1e-3
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +26,7 @@ class Reading:
     @property
     def deaf(self) -> bool:
         """Too quiet for the band shape to mean anything."""
-        return self.error is not None or self.loudness < DEAF
+        return self.error is not None or self.loudness < _DEAF
 
     @property
     def top_band(self) -> int:
@@ -83,18 +63,18 @@ def _bands(mono: np.ndarray, device: AudioDevice) -> tuple[float, ...]:
     microphone hears. A speech-tuned input has its energy in the mids with
     nothing below, whichever way its gain happens to be set.
     """
-    window = np.hanning(WINDOW)
-    frequencies = np.fft.rfftfreq(WINDOW, 1 / device.samplerate)
+    window = np.hanning(_WINDOW)
+    frequencies = np.fft.rfftfreq(_WINDOW, 1 / device.samplerate)
     spectra = [
-        np.abs(np.fft.rfft(mono[start : start + WINDOW] * window))
-        for start in range(0, len(mono) - WINDOW, WINDOW // 2)
+        np.abs(np.fft.rfft(mono[start : start + _WINDOW] * window))
+        for start in range(0, len(mono) - _WINDOW, _WINDOW // 2)
     ]
     if not spectra:
         return (0.0,) * len(BAND_NAMES)
 
     average = np.mean(spectra, axis=0)
     energies = []
-    for low, high in pairwise(BAND_EDGES):
+    for low, high in pairwise(_BAND_EDGES):
         bins = np.flatnonzero((frequencies >= low) & (frequencies < high))
         energies.append(float(average[bins].mean()) if bins.size else 0.0)
 
@@ -106,7 +86,7 @@ def _bands(mono: np.ndarray, device: AudioDevice) -> tuple[float, ...]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Compare the signal and frequency range of audio inputs."
     )
     parser.add_argument(
         "--device",
@@ -123,7 +103,10 @@ def main() -> None:
     )
 
     print(f"Recording {args.seconds:.0f} s per device. Play music, loud.\n")
-    print(f"{'device':<44} {'level':>7}  " + "  ".join(f"{n:<11}" for n in BAND_LABELS))
+    print(
+        f"{'device':<44} {'level':>7}  "
+        + "  ".join(f"{name:<11}" for name in _BAND_LABELS)
+    )
 
     readings = []
     for device in devices:
@@ -151,12 +134,10 @@ def _advise(readings: list[Reading]) -> None:
         return
 
     best = max(heard, key=lambda reading: reading.loudness)
-    # By name, not by index: Windows renumbers its devices whenever one appears
-    # or disappears, so today's 18 is tomorrow's something else entirely.
     print(f'Loudest, so the best bet:  --device "{_selector(best.device)}"')
     print(f"  {_name(best.device)}")
 
-    ceiling = BAND_EDGES[best.top_band + 1]
+    ceiling = _BAND_EDGES[best.top_band + 1]
     if best.top_band < len(BAND_NAMES) - 1:
         print(f"\n  It carries nothing above roughly {ceiling:.0f} Hz, so the top")
         print(

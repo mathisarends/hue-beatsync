@@ -1,12 +1,3 @@
-"""Microphone capture as a stream of mono blocks.
-
-PortAudio calls us back on its own high priority thread. That callback must
-never block, so it does the cheap part - downmix to mono - and hands the block
-straight to a listener.
-"""
-
-from __future__ import annotations
-
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import TracebackType
@@ -15,9 +6,9 @@ from typing import Self
 import numpy as np
 import sounddevice as sd
 
-DEFAULT_BLOCK_SIZE = 512
+_DEFAULT_BLOCK_SIZE = 512
 
-type BlockListener = Callable[[np.ndarray, float], None]
+type _BlockListener = Callable[[np.ndarray, float], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,9 +75,11 @@ class AudioCapture:
     def __init__(
         self,
         device: AudioDevice,
-        listener: BlockListener,
-        block_size: int = DEFAULT_BLOCK_SIZE,
+        listener: _BlockListener,
+        block_size: int = _DEFAULT_BLOCK_SIZE,
     ) -> None:
+        if block_size <= 0:
+            raise ValueError("block_size must be positive")
         self.device = device
         self.block_size = block_size
         self._listener = listener
@@ -151,10 +144,8 @@ class AudioCapture:
         if status.input_overflow:
             self._dropouts += 1
 
-        # mean() copies, which matters: PortAudio reuses the input buffer.
         mono = indata.mean(axis=1, dtype=np.float32)
         try:
             self._listener(mono, frames / self.samplerate)
         except Exception as error:
-            # PortAudio would tear the stream down silently, so keep the reason.
             self._failure = error

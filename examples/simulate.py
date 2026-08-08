@@ -1,44 +1,22 @@
-"""Run the whole chain on a synthetic track, without a microphone or a bridge.
-
-This is the tuning bench. It generates a track with a known tempo, feeds it
-through the analyzer in real block sizes, drives a visual at the stream's frame
-rate and reports what the lamps would have done - so a parameter change can be
-judged in a second instead of by playing music at the wall.
-
-    python experiments/simulate.py
-    python experiments/simulate.py --mode sweep --gamma 1.4
-
-With ``--wav`` it runs a real recording instead of the synthetic track, which is
-the honest test: whatever a microphone actually delivers, gate artefacts and
-all. Make one with ``record.py``.
-
-    python experiments/simulate.py --wav recording.wav --max-freq 1600
-"""
-
-from __future__ import annotations
-
 import argparse
 import wave
 from pathlib import Path
 
 import numpy as np
 from hueify.entertainment import Frame, Tick
-from light_organ.analysis import (
-    DEFAULT_SENSITIVITY,
-    HIGHEST_FREQUENCY,
-    SpectralAnalyzer,
-    band_edges,
-)
-from light_organ.console import sparkline
-from light_organ.visuals import DEFAULT_GAMMA, MODES
 
-RATE = 48000
-BLOCK = 512
-FPS = 50
+from examples.console import sparkline
+from hue_beatsync.analysis import SpectralAnalyzer, band_edges
+from hue_beatsync.visuals import create_visual, visual_names
 
-# Two areas measured from a real bridge. Neither is centred, and the first has
-# two channels sharing a position - which is exactly what breaks naive mappings.
-LAYOUTS = {
+_RATE = 48_000
+_BLOCK = 512
+_FPS = 50
+_DEFAULT_SENSITIVITY = 1.2
+_DEFAULT_GAMMA = 1.0
+_DEFAULT_MAX_FREQUENCY = 14_000.0
+
+_LAYOUTS = {
     "asymmetric": {0: 0.3, 1: 0.84, 2: 1.0, 3: 1.0},
     "wide": {0: -0.82, 1: -0.2, 2: 0.75, 3: 0.8, 4: 1.0},
     "even": {index: -1.0 + index * 0.5 for index in range(5)},
@@ -47,20 +25,20 @@ LAYOUTS = {
 
 def make_track(bpm: float, seconds: float) -> np.ndarray:
     """A kick on every beat, a hat on every offbeat, and a sustained pad."""
-    total = int(RATE * seconds)
-    time = np.arange(total) / RATE
+    total = int(_RATE * seconds)
+    time = np.arange(total) / _RATE
     audio = np.zeros(total, dtype=np.float32)
     beat = 60.0 / bpm
 
     for index in range(int(seconds / beat)):
-        start = int(index * beat * RATE)
-        span = np.arange(min(int(0.18 * RATE), total - start)) / RATE
+        start = int(index * beat * _RATE)
+        span = np.arange(min(int(0.18 * _RATE), total - start)) / _RATE
         audio[start : start + len(span)] += (
             0.9 * np.sin(2 * np.pi * 55 * span) * np.exp(-span * 22)
         ).astype(np.float32)
 
-        offbeat = int((index + 0.5) * beat * RATE)
-        span = np.arange(min(int(0.05 * RATE), max(total - offbeat, 0))) / RATE
+        offbeat = int((index + 0.5) * beat * _RATE)
+        span = np.arange(min(int(0.05 * _RATE), max(total - offbeat, 0))) / _RATE
         if len(span):
             noise = np.random.default_rng(index).normal(0, 1, len(span))
             audio[offbeat : offbeat + len(span)] += (
@@ -103,17 +81,17 @@ def run(
         rate, sensitivity=args.sensitivity, edges=band_edges(args.max_freq)
     )
     frame = Frame(layout)
-    visual = MODES[mode](layout, analyzer, gamma=args.gamma)
+    visual = create_visual(mode, layout, analyzer, gamma=args.gamma)
 
-    interval = 1 / FPS
+    interval = 1 / _FPS
     elapsed = last_render = 0.0
     next_frame = interval
     index = 0
     brightness = []
 
-    for start in range(0, len(audio) - BLOCK, BLOCK):
-        analyzer.feed(audio[start : start + BLOCK], BLOCK / rate)
-        elapsed += BLOCK / rate
+    for start in range(0, len(audio) - _BLOCK, _BLOCK):
+        analyzer.feed(audio[start : start + _BLOCK], _BLOCK / rate)
+        elapsed += _BLOCK / rate
 
         while next_frame <= elapsed:
             visual.render(frame, Tick(index, next_frame, next_frame - last_render))
@@ -128,15 +106,15 @@ def run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Run the analyzer and visuals against synthetic or WAV audio."
     )
-    parser.add_argument("--mode", choices=tuple(MODES), help="only this mode")
-    parser.add_argument("--layout", choices=tuple(LAYOUTS), help="only this layout")
+    parser.add_argument("--mode", choices=visual_names(), help="only this mode")
+    parser.add_argument("--layout", choices=tuple(_LAYOUTS), help="only this layout")
     parser.add_argument("--bpm", type=float, default=120.0)
     parser.add_argument("--seconds", type=float, default=12.0)
-    parser.add_argument("--sensitivity", type=float, default=DEFAULT_SENSITIVITY)
-    parser.add_argument("--gamma", type=float, default=DEFAULT_GAMMA)
-    parser.add_argument("--max-freq", type=float, default=HIGHEST_FREQUENCY)
+    parser.add_argument("--sensitivity", type=float, default=_DEFAULT_SENSITIVITY)
+    parser.add_argument("--gamma", type=float, default=_DEFAULT_GAMMA)
+    parser.add_argument("--max-freq", type=float, default=_DEFAULT_MAX_FREQUENCY)
     parser.add_argument("--wav", type=Path, help="run a recording instead")
     parser.add_argument(
         "--window",
@@ -153,7 +131,7 @@ def main() -> None:
         print(f"{args.wav} - {len(audio) / rate:.1f} s at {rate} Hz")
         print(f"  peak {np.max(np.abs(audio)):.4f}, rms {_rms(audio):.4f}")
     else:
-        audio, rate = make_track(args.bpm, args.seconds), RATE
+        audio, rate = make_track(args.bpm, args.seconds), _RATE
         onsets = 2 * int(args.seconds / (60 / args.bpm))
         print(f"{args.bpm:.0f} BPM, {args.seconds:.0f} s, {onsets} onsets in the track")
 
@@ -161,13 +139,13 @@ def main() -> None:
     print(f"sensitivity {args.sensitivity}, gamma {args.gamma}")
     print(f"bands {'  '.join(f'{edge:.0f}' for edge in edges)} Hz\n")
 
-    modes = (args.mode,) if args.mode else tuple(MODES)
-    layouts = (args.layout,) if args.layout else tuple(LAYOUTS)
+    modes = (args.mode,) if args.mode else visual_names()
+    layouts = (args.layout,) if args.layout else tuple(_LAYOUTS)
 
     for name in layouts:
-        print(f"{name} layout: {sorted(LAYOUTS[name].values())}")
+        print(f"{name} layout: {sorted(_LAYOUTS[name].values())}")
         for mode in modes:
-            brightness, beats, bpm = run(audio, rate, mode, LAYOUTS[name], args)
+            brightness, beats, bpm = run(audio, rate, mode, _LAYOUTS[name], args)
             low, high = min(brightness), max(brightness)
             mean = sum(brightness) / len(brightness)
             tempo = f"{bpm:>5.0f} BPM" if bpm else "   -- BPM"
