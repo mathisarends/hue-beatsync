@@ -4,7 +4,13 @@ from hue_beatsync.analysis import (
     SpectralAnalyzer,
     band_edges,
 )
-from hue_beatsync.audio import AudioCapture, AudioDevice, input_devices, resolve_device
+from hue_beatsync.audio import (
+    AudioCapture,
+    AudioDevice,
+    SoundDeviceCapture,
+    input_devices,
+    resolve_device,
+)
 from hue_beatsync.visuals import (
     Pulse,
     Spectrum,
@@ -23,6 +29,7 @@ __all__ = [
     "Pulse",
     "SpectralAnalyzer",
     "Spectrum",
+    "SoundDeviceCapture",
     "Sweep",
     "Visual",
     "band_edges",

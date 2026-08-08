@@ -1,14 +1,13 @@
-from collections.abc import Callable
 from dataclasses import dataclass
+from importlib import import_module
 from types import TracebackType
-from typing import Self
+from typing import Any, Self
 
 import numpy as np
-import sounddevice as sd
+
+from hue_beatsync.audio.ports import BlockListener
 
 _DEFAULT_BLOCK_SIZE = 512
-
-type _BlockListener = Callable[[np.ndarray, float], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +23,7 @@ class AudioDevice:
 
 
 def input_devices() -> list[AudioDevice]:
+    sd = _load_sounddevice()
     host_apis = sd.query_hostapis()
     return [
         AudioDevice(
@@ -45,7 +45,7 @@ def resolve_device(wanted: int | str | None = None) -> AudioDevice:
         raise RuntimeError("No audio input device found")
 
     if wanted is None:
-        default = sd.default.device[0]
+        default = _load_sounddevice().default.device[0]
         return next(
             (device for device in devices if device.index == default), devices[0]
         )
@@ -69,13 +69,13 @@ def resolve_device(wanted: int | str | None = None) -> AudioDevice:
     return match
 
 
-class AudioCapture:
-    """An open input stream that pushes mono blocks to a listener."""
+class SoundDeviceCapture:
+    """A sounddevice input stream that pushes mono blocks to a listener."""
 
     def __init__(
         self,
         device: AudioDevice,
-        listener: _BlockListener,
+        listener: BlockListener,
         block_size: int = _DEFAULT_BLOCK_SIZE,
     ) -> None:
         if block_size <= 0:
@@ -83,7 +83,7 @@ class AudioCapture:
         self.device = device
         self.block_size = block_size
         self._listener = listener
-        self._stream: sd.InputStream | None = None
+        self._stream: Any | None = None
         self._failure: BaseException | None = None
         self._dropouts = 0
 
@@ -108,6 +108,7 @@ class AudioCapture:
         return self._failure
 
     def start(self) -> Self:
+        sd = _load_sounddevice()
         self._stream = sd.InputStream(
             device=self.device.index,
             channels=min(self.device.channels, 2),
@@ -139,7 +140,7 @@ class AudioCapture:
         self.stop()
 
     def _on_block(
-        self, indata: np.ndarray, frames: int, _time: object, status: sd.CallbackFlags
+        self, indata: np.ndarray, frames: int, _time: object, status: Any
     ) -> None:
         if status.input_overflow:
             self._dropouts += 1
@@ -149,3 +150,7 @@ class AudioCapture:
             self._listener(mono, frames / self.samplerate)
         except Exception as error:
             self._failure = error
+
+
+def _load_sounddevice() -> Any:
+    return import_module("sounddevice")

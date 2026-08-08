@@ -9,7 +9,7 @@ import numpy as np
 import sounddevice as sd
 
 from examples.console import bar
-from hue_beatsync.audio import AudioDevice, resolve_device
+from hue_beatsync.audio.sounddevice import AudioDevice, resolve_device
 
 _WINDOW = 2048
 _SILENT_FLOOR = -90.0

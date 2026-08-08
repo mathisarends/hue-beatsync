@@ -7,7 +7,12 @@ from hueify.entertainment import EntertainmentStream
 
 from examples.console import sparkline
 from hue_beatsync.analysis import SpectralAnalyzer, band_edges
-from hue_beatsync.audio import AudioCapture, input_devices, resolve_device
+from hue_beatsync.audio import AudioCapture
+from hue_beatsync.audio.sounddevice import (
+    SoundDeviceCapture,
+    input_devices,
+    resolve_device,
+)
 from hue_beatsync.visuals import (
     Visual,
     channel_positions,
@@ -45,7 +50,7 @@ async def main() -> None:
 
         print(f"Listening on {device}")
 
-        with AudioCapture(device, analyzer.feed) as capture:
+        with SoundDeviceCapture(device, analyzer.feed) as capture:
             async with hue.entertainment.stream(area, rate=args.rate) as stream:
                 positions = channel_positions(stream.channels)
                 visual = create_visual(args.mode, positions, analyzer, gamma=args.gamma)

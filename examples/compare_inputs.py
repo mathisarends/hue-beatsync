@@ -7,7 +7,7 @@ import sounddevice as sd
 
 from examples.console import bar
 from hue_beatsync.analysis import BAND_NAMES, band_edges
-from hue_beatsync.audio import AudioDevice, input_devices, resolve_device
+from hue_beatsync.audio.sounddevice import AudioDevice, input_devices, resolve_device
 
 _WINDOW = 2048
 _BAND_LABELS = ("BASS", "LOW", "MID", "HIGH", "TRE")

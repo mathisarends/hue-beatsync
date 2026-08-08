@@ -4,7 +4,12 @@ import time
 
 from examples.console import bar
 from hue_beatsync.analysis import SpectralAnalyzer, band_edges
-from hue_beatsync.audio import AudioCapture, input_devices, resolve_device
+from hue_beatsync.audio import AudioCapture
+from hue_beatsync.audio.sounddevice import (
+    SoundDeviceCapture,
+    input_devices,
+    resolve_device,
+)
 
 _REFRESH_RATE = 30
 _DEFAULT_SENSITIVITY = 1.2
@@ -58,7 +63,7 @@ def main() -> None:
     print("Play something loud enough to hear across the room. Ctrl+C stops.\n")
 
     with (
-        AudioCapture(device, analyzer.feed) as capture,
+        SoundDeviceCapture(device, analyzer.feed) as capture,
         contextlib.suppress(KeyboardInterrupt),
     ):
         _watch(analyzer, capture, args.seconds)
