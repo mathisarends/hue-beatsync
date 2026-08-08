@@ -31,19 +31,12 @@ The public package contains only reusable logic:
 
 ## Examples
 
-The executable workflows live in `examples/` and are intentionally outside the
+The executable workflow lives in `examples/` and is intentionally outside the
 package:
 
 ```powershell
-uv run python -m examples.inspect_audio --list
-uv run python -m examples.inspect_audio
 uv run python -m examples.stream_lights --area "Musikbereich" --mode pulse
-uv run python -m examples.simulate
 ```
-
-`compare_inputs.py` compares microphones and `record_audio.py` writes a WAV file
-with a signal-quality report. Start with `inspect_audio.py` before connecting to
-a bridge; it makes microphone and beat-detection problems visible immediately.
 
 Available visual names are returned by `visual_names()`. Construct them through
 `create_visual()` so applications do not depend on internal registries.
