@@ -57,6 +57,57 @@ def test_capture_rejects_non_positive_block_size(devices):
         SoundDeviceCapture(devices[0], lambda *_: None, block_size=0)
 
 
+def test_capture_rejects_non_positive_gain(devices):
+    with pytest.raises(ValueError, match="gain"):
+        SoundDeviceCapture(devices[0], lambda *_: None, gain=0.0)
+
+
+def test_exclusive_mode_requires_a_wasapi_device(devices):
+    with pytest.raises(ValueError, match="WASAPI"):
+        SoundDeviceCapture(devices[1], lambda *_: None, exclusive=True)
+
+    wasapi_device = devices[0]
+    assert wasapi_device.host_api == "WASAPI"
+    SoundDeviceCapture(wasapi_device, lambda *_: None, exclusive=True)
+
+
+def test_gain_scales_and_clips_the_downmixed_block(devices):
+    received = []
+    capture = SoundDeviceCapture(
+        devices[0], lambda block, delta: received.append(block), gain=4.0
+    )
+    stereo = np.array([[0.1, 0.1], [0.5, 0.5]], dtype=np.float32)
+
+    capture._on_block(stereo, 2, None, SimpleNamespace(input_overflow=False))
+
+    assert received[0] == pytest.approx([0.4, 1.0])
+
+
+def test_start_requests_wasapi_exclusive_settings(monkeypatch, devices):
+    created = {}
+
+    class FakeStream:
+        latency = 0.0
+
+        def start(self):
+            pass
+
+    def fake_input_stream(**kwargs):
+        created.update(kwargs)
+        return FakeStream()
+
+    backend = SimpleNamespace(
+        InputStream=fake_input_stream,
+        WasapiSettings=lambda exclusive: SimpleNamespace(exclusive=exclusive),
+    )
+    monkeypatch.setattr(sounddevice, "_load_sounddevice", lambda: backend)
+
+    capture = SoundDeviceCapture(devices[0], lambda *_: None, exclusive=True)
+    capture.start()
+
+    assert created["extra_settings"].exclusive is True
+
+
 def test_sounddevice_capture_implements_capture_contract(devices):
     capture: AudioCapture = SoundDeviceCapture(devices[0], lambda *_: None)
 

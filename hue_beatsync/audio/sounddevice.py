@@ -70,18 +70,45 @@ def resolve_device(wanted: int | str | None = None) -> AudioDevice:
 
 
 class SoundDeviceCapture:
-    """A sounddevice input stream that pushes mono blocks to a listener."""
+    """A sounddevice input stream that pushes mono blocks to a listener.
+
+    ``exclusive`` requests direct WASAPI hardware access, which is the only
+    lever this library exposes for skipping Windows' own effects chain - noise
+    suppression, AGC, and some AEC implementations run there. It only applies
+    to a device's WASAPI entry and fails if another application already holds
+    the device open.
+
+    Getting past a gate this way trades it for a different problem: automatic
+    gain control runs in that same chain, so an exclusive stream is also
+    unamplified raw hardware output, often 30-50 dB quieter than the level the
+    gated stream would have shown. ``gain`` compensates, with no safe default -
+    it depends on the microphone. Measure a device first: a multiplier that
+    clears ``analysis.SILENCE_RMS`` with headroom and does not clip the
+    loudest music expected.
+    """
 
     def __init__(
         self,
         device: AudioDevice,
         listener: BlockListener,
         block_size: int = _DEFAULT_BLOCK_SIZE,
+        exclusive: bool = False,
+        gain: float = 1.0,
     ) -> None:
         if block_size <= 0:
             raise ValueError("block_size must be positive")
+        if exclusive and "WASAPI" not in device.host_api:
+            raise ValueError(
+                f"Exclusive mode needs a WASAPI device, {device.name!r} is "
+                f"{device.host_api}."
+            )
+        if gain <= 0.0:
+            raise ValueError(f"gain must be positive, got {gain}")
+
         self.device = device
         self.block_size = block_size
+        self.exclusive = exclusive
+        self.gain = gain
         self._listener = listener
         self._stream: Any | None = None
         self._failure: BaseException | None = None
@@ -109,6 +136,7 @@ class SoundDeviceCapture:
 
     def start(self) -> Self:
         sd = _load_sounddevice()
+        extra = sd.WasapiSettings(exclusive=True) if self.exclusive else None
         self._stream = sd.InputStream(
             device=self.device.index,
             channels=min(self.device.channels, 2),
@@ -116,6 +144,7 @@ class SoundDeviceCapture:
             blocksize=self.block_size,
             dtype="float32",
             latency="low",
+            extra_settings=extra,
             callback=self._on_block,
         )
         self._stream.start()
@@ -146,6 +175,8 @@ class SoundDeviceCapture:
             self._dropouts += 1
 
         mono = indata.mean(axis=1, dtype=np.float32)
+        if self.gain != 1.0:
+            mono = np.clip(mono * self.gain, -1.0, 1.0, out=mono)
         try:
             self._listener(mono, frames / self.samplerate)
         except Exception as error:

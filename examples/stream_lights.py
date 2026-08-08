@@ -50,7 +50,9 @@ async def main() -> None:
 
         print(f"Listening on {device}")
 
-        with SoundDeviceCapture(device, analyzer.feed) as capture:
+        with SoundDeviceCapture(
+            device, analyzer.feed, exclusive=args.exclusive, gain=args.gain
+        ) as capture:
             async with hue.entertainment.stream(area, rate=args.rate) as stream:
                 positions = channel_positions(stream.channels)
                 visual = create_visual(args.mode, positions, analyzer, gamma=args.gamma)
@@ -139,6 +141,17 @@ def _parse_args() -> argparse.Namespace:
         type=float,
         default=_DEFAULT_MAX_FREQUENCY,
         help="squeeze the bands below this, for a mic that cannot hear higher",
+    )
+    parser.add_argument(
+        "--exclusive",
+        action="store_true",
+        help="WASAPI direct hardware access, skipping Windows' effects chain",
+    )
+    parser.add_argument(
+        "--gain",
+        type=float,
+        default=1.0,
+        help="multiply the signal, exclusive mode is often much quieter",
     )
     parser.add_argument("--rate", type=int, default=50, help="frames per second")
     parser.add_argument(
