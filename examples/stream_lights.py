@@ -2,29 +2,12 @@ import argparse
 import asyncio
 import contextlib
 
-from hueify import Hueify
-from hueify.entertainment import EntertainmentStream
-
-from examples.console import sparkline
-from hue_beatsync.analysis import SpectralAnalyzer, band_edges
-from hue_beatsync.audio import AudioCapture
-from hue_beatsync.audio.sounddevice import (
-    SoundDeviceCapture,
-    input_devices,
-    resolve_device,
-)
-from hue_beatsync.visuals import (
-    Visual,
-    channel_positions,
-    create_visual,
-    visual_names,
-)
+from hue_beatsync import BeatSync, input_devices, visual_names
 
 _DEFAULT_AREA = "Musikbereich"
 _DEFAULT_SENSITIVITY = 1.2
 _DEFAULT_GAMMA = 1.0
 _DEFAULT_MAX_FREQUENCY = 14_000.0
-_REPORT_INTERVAL = 1.0
 
 
 async def main() -> None:
@@ -35,80 +18,18 @@ async def main() -> None:
             print(device)
         return
 
-    device = resolve_device(args.device)
-    analyzer = SpectralAnalyzer(
-        device.samplerate,
+    sync = BeatSync(
+        args.area,
+        device=args.device,
+        mode=args.mode,
+        rate=args.rate,
         sensitivity=args.sensitivity,
-        edges=band_edges(args.max_freq),
+        gamma=args.gamma,
+        max_frequency=args.max_freq,
+        exclusive=args.exclusive,
+        gain=args.gain,
     )
-
-    async with Hueify() as hue:
-        area = await hue.entertainment.find_by_name(args.area)
-        if area.is_streaming:
-            print(f"{args.area} is already being streamed to by another application.")
-            return
-
-        print(f"Listening on {device}")
-
-        with SoundDeviceCapture(
-            device, analyzer.feed, exclusive=args.exclusive, gain=args.gain
-        ) as capture:
-            async with hue.entertainment.stream(area, rate=args.rate) as stream:
-                positions = channel_positions(stream.channels)
-                visual = create_visual(args.mode, positions, analyzer, gamma=args.gamma)
-                print(
-                    f"Streaming {args.mode} to {args.area}, "
-                    f"{len(stream.channels)} channels at {stream.rate} fps, "
-                    f"{capture.latency * 1000:.0f} ms input latency.\n"
-                )
-                await _run(stream, visual, analyzer, capture, args.seconds)
-
-        print(
-            f"\n\nSent {stream.stats.frames_sent} frames, "
-            f"{stream.stats.late_frames} late, {capture.dropouts} audio dropouts."
-        )
-        if capture.failure is not None:
-            print(f"The analysis raised {capture.failure!r}")
-
-
-async def _run(
-    stream: EntertainmentStream,
-    visual: Visual,
-    analyzer: SpectralAnalyzer,
-    capture: AudioCapture,
-    seconds: float | None,
-) -> None:
-    reporter = asyncio.create_task(_report(stream, analyzer, capture))
-    try:
-        async with asyncio.timeout(seconds):
-            await stream.run(visual)
-    except TimeoutError:
-        pass
-    finally:
-        reporter.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await reporter
-
-
-async def _report(
-    stream: EntertainmentStream, analyzer: SpectralAnalyzer, capture: AudioCapture
-) -> None:
-    """A live line to judge quality by: is it hearing beats, is it keeping up."""
-    while True:
-        await asyncio.sleep(_REPORT_INTERVAL)
-        if capture.failure is not None:
-            return
-
-        features = analyzer.features
-        bars = sparkline(features.levels)
-        bpm = "-- BPM" if features.bpm is None else f"{features.bpm:.0f} BPM"
-        state = "quiet" if features.silent else bpm
-        print(
-            f"\r{bars}  {features.beats:>5} beats  {state:>8}  "
-            f"{stream.stats.late_frames} late frames  ",
-            end="",
-            flush=True,
-        )
+    await sync.run(args.seconds)
 
 
 def _parse_args() -> argparse.Namespace:

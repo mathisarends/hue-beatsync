@@ -11,6 +11,7 @@ from hue_beatsync.audio import (
     input_devices,
     resolve_device,
 )
+from hue_beatsync.beatsync import BeatSync
 from hue_beatsync.visuals import (
     Pulse,
     Spectrum,
@@ -26,6 +27,7 @@ __all__ = [
     "AudioCapture",
     "AudioDevice",
     "AudioFeatures",
+    "BeatSync",
     "Pulse",
     "SpectralAnalyzer",
     "Spectrum",

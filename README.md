@@ -1,8 +1,23 @@
 # hue-beatsync
 
 `hue-beatsync` turns live audio input into frames for a Philips Hue
-entertainment area. The library separates audio capture, spectral analysis and
-visual rendering so each part can also be used independently.
+entertainment area. With Hue credentials in the environment, the complete
+workflow is:
+
+```python
+import asyncio
+
+from hue_beatsync import BeatSync
+
+asyncio.run(BeatSync("Musikbereich").run())
+```
+
+Pass `device`, `mode`, `rate`, `sensitivity`, `gamma`, or `max_frequency` only
+when their defaults need changing. An existing `Hueify` client can be supplied
+as `hue=client`; otherwise `BeatSync` creates and closes one for the run.
+
+Audio capture, spectral analysis and visual rendering remain independently
+available for applications that need lower-level control.
 
 Install the system-audio backend only when it is needed:
 
@@ -31,8 +46,7 @@ The public package contains only reusable logic:
 
 ## Examples
 
-The executable workflow lives in `examples/` and is intentionally outside the
-package:
+The executable wrapper lives in `examples/`:
 
 ```powershell
 uv run python -m examples.stream_lights --area "Musikbereich" --mode pulse
