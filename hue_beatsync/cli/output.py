@@ -6,8 +6,10 @@ from typing import Any
 
 import click
 
+from hue_beatsync.analysis import BAND_NAMES, AudioFeatures
 from hue_beatsync.areas import BeatSyncArea
 from hue_beatsync.audio import AudioDevice
+from hue_beatsync.diagnostics import AudioDiagnostic
 
 
 class OutputMode(StrEnum):
@@ -86,6 +88,44 @@ class Output:
         else:
             click.echo(f"Stopped streaming to {area}.")
 
+    def live_features(self, elapsed: float, features: AudioFeatures) -> None:
+        if not click.get_text_stream("stdout").isatty():
+            return
+        bands = " ".join(_meter(level) for level in features.levels)
+        bpm = f"{features.bpm:.0f}" if features.bpm is not None else "--"
+        click.echo(
+            f"\r{elapsed:4.1f}s  {bands}  beats {features.beats}  bpm {bpm}",
+            nl=False,
+        )
+
+    def audio_diagnostic(self, result: AudioDiagnostic) -> None:
+        data = _diagnostic_data(result)
+        if self.mode is OutputMode.JSON:
+            self._json(data)
+            return
+        if self.mode is OutputMode.PLAIN:
+            self._plain(
+                result.device.index,
+                result.device.name,
+                result.audio_detected,
+                result.beats,
+                _rounded(result.bpm),
+                result.dropouts,
+                *(_rounded(level) for level in result.levels),
+            )
+            return
+        if click.get_text_stream("stdout").isatty():
+            click.echo()
+        signal = "detected" if result.audio_detected else "not detected"
+        bpm = f"{result.bpm:.1f}" if result.bpm is not None else "not enough beats"
+        click.echo(f"Audio {signal} on [{result.device.index}] {result.device.name}")
+        click.echo(
+            f"Beats {result.beats}  BPM {bpm}  "
+            f"latency {result.latency_ms:.1f} ms  dropouts {result.dropouts}"
+        )
+        for name, level in zip(BAND_NAMES, result.levels, strict=True):
+            click.echo(f"{name:>8}  {_meter(level)}  {level:.2f}")
+
     def error(self, error: BaseException) -> None:
         if self.mode is OutputMode.JSON:
             data = {"error": str(error)}
@@ -122,6 +162,36 @@ def _area_data(area: BeatSyncArea) -> dict[str, object]:
         "active": area.active,
         "channels": area.channels,
     }
+
+
+def _diagnostic_data(result: AudioDiagnostic) -> dict[str, object]:
+    return {
+        "device": {"index": result.device.index, "name": result.device.name},
+        "duration": result.duration,
+        "audio": result.audio_detected,
+        "beats": result.beats,
+        "bpm": _rounded(result.bpm),
+        "dropouts": result.dropouts,
+        "latency_ms": _rounded(result.latency_ms),
+        "features": {
+            "loudness": _rounded(result.max_loudness),
+            "energy": _rounded(result.max_energy),
+            "percussiveness": _rounded(result.max_percussiveness),
+            "bands": {
+                name: _rounded(level)
+                for name, level in zip(BAND_NAMES, result.levels, strict=True)
+            },
+        },
+    }
+
+
+def _rounded(value: float | None) -> float | None:
+    return round(value, 4) if value is not None else None
+
+
+def _meter(value: float, width: int = 8) -> str:
+    filled = round(min(max(value, 0.0), 1.0) * width)
+    return "█" * filled + "░" * (width - filled)
 
 
 def _escape(value: object) -> str:
