@@ -15,12 +15,18 @@ The `cli` extra contains Click and the sounddevice audio backend. Installing
 hue-beatsync [--json | --plain] run <area> [options]
 hue-beatsync [--json | --plain] stop <area>
 hue-beatsync [--json | --plain] areas list
+hue-beatsync [--json | --plain] doctor [options]
 hue-beatsync [--json | --plain] devices list
 hue-beatsync [--json | --plain] visuals list
 ```
 
-Use `hue-beatsync <command> --help` for the complete option list. Global output
-flags come before the command.
+Use `hue-beatsync <command> --help` for the complete option list. Output flags
+work before or after the command, so these calls are equivalent:
+
+```console
+hue-beatsync --json areas list
+hue-beatsync areas list --json
+```
 
 Start a stream with the default `pulse` visual:
 
@@ -46,6 +52,17 @@ hue-beatsync stop "Music"
 `run` owns the stream in the foreground and normally releases it when stopped
 with Ctrl+C. `stop` is idempotent and also releases an area left active by an
 interrupted or different client.
+
+Check the default audio input for five seconds without opening a Hue stream:
+
+```console
+hue-beatsync doctor
+hue-beatsync doctor --device "Stereo Mix" --seconds 10 --json
+```
+
+`doctor` always has a finite duration and never prompts. In an interactive
+terminal it shows a live feature meter. JSON and plain modes wait for the
+measurement and emit exactly one summary record.
 
 ## Output contract
 
@@ -99,6 +116,18 @@ hue-beatsync --json devices list
 ```
 
 Plain field order is the same as the documented JSON key order.
+
+### `doctor`
+
+The diagnostic opens the selected audio device and runs the same spectral and
+beat analysis used by BeatSync. Runtime failures exit with code `1`. A
+successful check reports whether a signal was detected, beats and BPM, capture
+latency, dropouts, and the peak feature values seen during the bounded
+measurement.
+
+```json
+{"device":{"index":2,"name":"Stereo Mix"},"duration":5.0,"audio":true,"beats":8,"bpm":120.0,"dropouts":0,"latency_ms":21.3,"features":{"loudness":0.0412,"energy":0.82,"percussiveness":0.61,"bands":{"bass":0.92,"low mid":0.78,"mid":0.54,"high mid":0.41,"treble":0.33}}}
+```
 
 ### `visuals list`
 
