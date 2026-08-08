@@ -56,7 +56,11 @@ def cli(context: click.Context, json_output: bool, plain: bool) -> None:
     show_default=True,
 )
 @click.option(
-    "--floor", type=click.FloatRange(0.0, 1.0), default=0.12, show_default=True
+    "--floor",
+    type=click.FloatRange(0.0, 1.0, max_open=True),
+    default=0.18,
+    show_default=True,
+    help="Brightness the lamps hold while audio is playing.",
 )
 @click.option(
     "--max-frequency",

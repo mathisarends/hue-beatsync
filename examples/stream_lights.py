@@ -7,6 +7,7 @@ from hue_beatsync import BeatSync, input_devices, visual_names
 _DEFAULT_AREA = "Musikbereich"
 _DEFAULT_SENSITIVITY = 1.2
 _DEFAULT_GAMMA = 1.0
+_DEFAULT_FLOOR = 0.12
 _DEFAULT_MAX_FREQUENCY = 14_000.0
 
 
@@ -25,6 +26,7 @@ async def main() -> None:
         rate=args.rate,
         sensitivity=args.sensitivity,
         gamma=args.gamma,
+        floor=args.floor,
         max_frequency=args.max_freq,
         exclusive=args.exclusive,
         gain=args.gain,
@@ -57,6 +59,12 @@ def _parse_args() -> argparse.Namespace:
         type=float,
         default=_DEFAULT_GAMMA,
         help="brightness contrast, above 1 darkens the quiet parts",
+    )
+    parser.add_argument(
+        "--floor",
+        type=float,
+        default=_DEFAULT_FLOOR,
+        help="brightness the lamps never fall below while audio is playing",
     )
     parser.add_argument(
         "--max-freq",

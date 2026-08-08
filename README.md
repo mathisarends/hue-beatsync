@@ -18,9 +18,15 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Pass `device`, `mode`, `rate`, `sensitivity`, `gamma`, or `max_frequency` only
-when their defaults need changing. `BeatSync` creates and closes the Hue client,
-entertainment stream, and audio capture inside its context manager.
+Pass `device`, `mode`, `rate`, `sensitivity`, `gamma`, `floor`, or
+`max_frequency` only when their defaults need changing. `BeatSync` creates and
+closes the Hue client, entertainment stream, and audio capture inside its
+context manager.
+
+Two settings decide how the room reads. `floor` is the brightness the lamps
+never fall below while anything is playing, so a quiet passage stays visible
+instead of reading as off; the room still fades out on real silence. `gamma`
+above 1 restores contrast if the result looks too flat.
 
 Audio capture, spectral analysis and visual rendering remain independently
 available for applications that need lower-level control.
@@ -43,7 +49,9 @@ with SoundDeviceCapture(device, analyzer.feed):
 
 The public package contains only reusable logic:
 
-- `analysis.py` extracts normalized bands, energy, beats and tempo.
+- `analysis.py` extracts normalized bands, energy, beats, tempo, and how
+  percussive the material is at all, which lets the visuals stay calm on music
+  that has no beat to follow.
 - `audio/ports.py` defines the capture contract implemented by interchangeable
   backends without depending on a particular input library.
 - `audio/sounddevice.py` discovers system inputs and streams mono blocks from them.
