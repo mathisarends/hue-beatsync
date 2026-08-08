@@ -18,7 +18,8 @@ _DEFAULT_FLOOR = 0.18
 
 _CALM_ENVELOPE = (0.12, 0.9)
 _PUNCHY_ENVELOPE = (0.045, 0.35)
-_FLASH_ENVELOPE = (0.04, 0.2)
+_FLASH_ENVELOPE = (0.025, 0.22)
+_FLASH_GAIN = 0.6
 
 _HUE_TURNS_PER_SECOND = 0.35
 
@@ -157,7 +158,7 @@ class Pulse(Visual):
         # Percussive material needs headroom above the sustained level for the
         # flash to land in; without beats that headroom is only lost brightness.
         sustain = _mix(0.95, 0.7, features.percussiveness)
-        brightness = self._shape(min(level * sustain + flash * 0.45, 1.0))
+        brightness = self._shape(min(level * sustain + flash * _FLASH_GAIN, 1.0))
 
         hue = self._hue.advance(tick.delta)
         saturation = 1.0 - 0.25 * features.centroid
