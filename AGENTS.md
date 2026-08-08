@@ -14,3 +14,5 @@
 - Comments document architectural decisions, constraints, or information that
   cannot be expressed in code. Do not narrate the code or add documentation by
   default.
+- Commit completed changes in small, coherent steps when working across multiple
+  concerns.
