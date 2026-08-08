@@ -103,9 +103,9 @@ def _hats(rate, seconds, interval=0.125, amplitude=0.15, seed=4):
     samples = _pad(rate, seconds, amplitude, seed)
     generator = np.random.default_rng(seed)
     time = np.arange(int(rate * 0.04)) / rate
-    hat = (generator.standard_normal(len(time)) * np.exp(-time / 0.006) * 0.5).astype(
-        np.float32
-    )
+    noise = generator.standard_normal(len(time))
+    noise[1:] -= noise[:-1]
+    hat = (noise * np.exp(-time / 0.006) * 0.5).astype(np.float32)
     for onset in np.arange(0.4, seconds - 0.2, interval):
         start = int(onset * rate)
         samples[start : start + len(hat)] += hat
@@ -153,7 +153,8 @@ def test_fast_hi_hats_do_not_drive_the_room_at_their_own_rate():
 
     _feed(analyzer, _hats(rate, 8.0), rate)
 
-    assert analyzer.features.bpm is None or analyzer.features.bpm < 200.0
+    assert analyzer.features.beats <= 2
+    assert analyzer.features.bpm is None
 
 
 def test_a_quiet_passage_after_a_loud_one_stays_visible():

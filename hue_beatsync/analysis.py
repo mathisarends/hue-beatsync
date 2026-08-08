@@ -45,9 +45,16 @@ _CENTROID_RANGE = (80.0, 6000.0)
 _MIN_BEAT_GAP = 0.26
 _ONSET_BANDS = 24
 _ONSET_RANGE = (40.0, 12000.0)
-_ONSET_LOBES = ((70.0, 1.0, 0.65), (2200.0, 1.15, 1.35))
-_ONSET_BASE_WEIGHT = 0.15
+_ONSET_LOBES = (
+    (70.0, 0.9, 0.45),
+    (200.0, 0.8, 0.8),
+    (2000.0, 0.75, 1.25),
+)
+_ONSET_BASE_WEIGHT = 0.03
 _ONSET_FLOOR_RATIO = 1e-3
+_DRUM_BODY_RANGES = ((40.0, 500.0), (500.0, 4000.0))
+_CYMBAL_RANGE = (5000.0, 12000.0)
+_MIN_DRUM_PROMINENCE = 3.65
 _FLUX_MARGIN = 0.4
 _CREST_RANGE = (0.85, 1.60)
 _MIN_PERCUSSIVENESS = 0.15
@@ -242,6 +249,12 @@ class _OnsetDetector:
         self._sensitivity = sensitivity
         self._bands = _band_slices(frequencies, edges)
         self._weights = _onset_weights(edges)
+        self._drum_body = tuple(
+            np.flatnonzero((frequencies >= low) & (frequencies < high))
+            for low, high in _DRUM_BODY_RANGES
+        )
+        low, high = _CYMBAL_RANGE
+        self._cymbals = np.flatnonzero((frequencies >= low) & (frequencies < high))
         self._previous = np.zeros(_ONSET_BANDS, dtype=np.float32)
         self._history: deque[float] = deque(maxlen=_FLUX_HISTORY)
         self._beat_times: deque[float] = deque(maxlen=12)
@@ -265,6 +278,9 @@ class _OnsetDetector:
         history = self._history
         history.append(flux)
         if len(history) < history.maxlen:
+            return 0.0
+        if self._drum_prominence(spectrum) < _MIN_DRUM_PROMINENCE:
+            self._percussiveness.update(0.0, delta)
             return 0.0
 
         mean = statistics.fmean(history)
@@ -315,16 +331,20 @@ class _OnsetDetector:
         self._previous = compressed
         return float(np.dot(rise, self._weights))
 
+    def _drum_prominence(self, spectrum: np.ndarray) -> float:
+        body = sum(float(spectrum[band].mean()) for band in self._drum_body)
+        cymbals = float(spectrum[self._cymbals].mean())
+        return body / max(cymbals, 1e-9)
+
 
 def _onset_weights(edges: tuple[float, ...]) -> np.ndarray:
     """Weight the flux toward the drums a listener hears as the rhythm.
 
-    The dominant lobe covers the snare and clap region around 2 kHz, with a
-    smaller supporting lobe around the kick at 70 Hz. The backbeat is what makes
-    a track bounce, so a plain tilt toward the low end throws the rhythm away.
-    Everything above rolls off toward a small floor, because a sixteenth note
-    hi-hat pattern otherwise dominates the sum and the lights follow the filler
-    instead of the groove.
+    The dominant lobes cover the body around 200 Hz and the crack around 2 kHz
+    that distinguish a snare or clap from broadband cymbal noise. A smaller
+    supporting lobe keeps the kick around 70 Hz. Frequencies outside these
+    regions receive very little weight, so a sixteenth-note hi-hat pattern does
+    not drive the lights instead of the groove.
     """
     centers = np.sqrt(np.array(edges[:-1]) * np.array(edges[1:]))
     weights = np.full(len(centers), _ONSET_BASE_WEIGHT)
