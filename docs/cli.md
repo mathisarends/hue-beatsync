@@ -13,6 +13,8 @@ The `cli` extra contains Click and the sounddevice audio backend. Installing
 
 ```text
 hue-beatsync [--json | --plain] run <area> [options]
+hue-beatsync [--json | --plain] stop <area>
+hue-beatsync [--json | --plain] areas list
 hue-beatsync [--json | --plain] devices list
 hue-beatsync [--json | --plain] visuals list
 ```
@@ -33,6 +35,18 @@ duration:
 hue-beatsync run "Music" --device "Stereo Mix" --visual spectrum --seconds 60
 ```
 
+List the configured entertainment areas before starting, or explicitly release
+one that is active:
+
+```console
+hue-beatsync areas list
+hue-beatsync stop "Music"
+```
+
+`run` owns the stream in the foreground and normally releases it when stopped
+with Ctrl+C. `stop` is idempotent and also releases an area left active by an
+interrupted or different client.
+
 ## Output contract
 
 The default output is intended for people. `--plain` emits stable,
@@ -43,6 +57,33 @@ formatting whitespace.
 Command results are written to stdout. Errors are written to stderr. Successful
 commands exit with code `0`, runtime failures with `1`, and invalid command-line
 usage with `2`.
+
+### `areas list`
+
+JSON is an array with one compact object per Hue entertainment area. The keys
+are `id`, `name`, `active`, and `channels`.
+
+```json
+[{"id":"6f8…","name":"Music","active":false,"channels":4}]
+```
+
+Plain field order is the same as the documented JSON key order. Human output
+shows the name first so it can be copied directly into `run` or `stop`.
+
+### `stop`
+
+Stopping an active area returns its canonical name. Calling it for an already
+inactive area succeeds with the same result.
+
+```json
+{"status":"stopped","area":"Music"}
+```
+
+An unknown area returns the available names as structured JSON on stderr:
+
+```json
+{"error":"No entertainment area matches 'Kitchen'. Available: Music, Studio","areas":["Music","Studio"]}
+```
 
 ### `devices list`
 
