@@ -16,6 +16,8 @@ import argparse
 import asyncio
 import contextlib
 
+from hueify import Hueify
+from hueify.entertainment import EntertainmentStream
 from light_organ.analysis import (
     DEFAULT_SENSITIVITY,
     HIGHEST_FREQUENCY,
@@ -25,9 +27,6 @@ from light_organ.analysis import (
 from light_organ.audio import AudioCapture, input_devices, resolve_device
 from light_organ.console import sparkline
 from light_organ.visuals import DEFAULT_GAMMA, MODES, Visual, channel_positions
-
-from hueify import Hueify
-from hueify.entertainment import EntertainmentStream
 
 DEFAULT_AREA = "Musikbereich"
 REPORT_INTERVAL = 1.0

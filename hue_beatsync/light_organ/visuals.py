@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from hueify.color import RGB
 from hueify.entertainment import Frame, Tick
 from hueify.models import EntertainmentChannel
+
 from light_organ.analysis import BAND_NAMES, AudioFeatures, SpectralAnalyzer
 from light_organ.smoothing import Envelope
 

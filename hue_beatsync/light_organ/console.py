@@ -29,7 +29,7 @@ def _drawable(text: str) -> bool:
     encoding = sys.stdout.encoding or "ascii"
     try:
         text.encode(encoding)
-    except (UnicodeEncodeError, LookupError):
+    except UnicodeEncodeError, LookupError:
         return False
     return True
 

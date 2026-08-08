@@ -22,6 +22,7 @@ import wave
 from pathlib import Path
 
 import numpy as np
+from hueify.entertainment import Frame, Tick
 from light_organ.analysis import (
     DEFAULT_SENSITIVITY,
     HIGHEST_FREQUENCY,
@@ -30,8 +31,6 @@ from light_organ.analysis import (
 )
 from light_organ.console import sparkline
 from light_organ.visuals import DEFAULT_GAMMA, MODES
-
-from hueify.entertainment import Frame, Tick
 
 RATE = 48000
 BLOCK = 512
