@@ -122,6 +122,23 @@ def test_fast_beats_do_not_retarget_an_unfinished_hue_transition(analyzer):
     assert visual._hue.target == target
 
 
+def test_pulse_softens_the_first_frame_of_a_beat_flash(analyzer):
+    visual = create_visual("pulse", {1: 0.0}, analyzer, floor=0.0)
+    quiet = features(levels=(0.0,) * 5, energy=0.0, beats=0)
+    run(visual, analyzer, quiet, seconds=1.0)
+
+    beat = features(
+        levels=(0.0,) * 5,
+        energy=0.0,
+        beats=1,
+        beat_strength=1.0,
+        percussiveness=1.0,
+    )
+    frame = run(visual, analyzer, beat, seconds=0.02)
+
+    assert 0.05 < brightnesses(frame)[0] < 0.3
+
+
 def test_crowded_beats_flash_weaker_than_spaced_ones(analyzer):
     """Sixteenth note filler must ripple, where a half second kick punches."""
 

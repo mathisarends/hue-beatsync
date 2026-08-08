@@ -17,7 +17,8 @@ _DEFAULT_GAMMA = 1.0
 _DEFAULT_FLOOR = 0.18
 
 _CALM_ENVELOPE = (0.12, 0.9)
-_PUNCHY_ENVELOPE = (0.015, 0.22)
+_PUNCHY_ENVELOPE = (0.045, 0.35)
+_FLASH_ENVELOPE = (0.04, 0.2)
 
 _HUE_TURNS_PER_SECOND = 0.35
 
@@ -131,7 +132,7 @@ class Pulse(Visual):
     ) -> None:
         super().__init__(positions, analyzer, gamma, floor)
         self._brightness = Envelope(*_CALM_ENVELOPE)
-        self._flash = Envelope(0.005, 0.12)
+        self._flash = Envelope(*_FLASH_ENVELOPE)
         self._spacing = _BeatSpacing()
         self._hue = _HueDrift()
 
@@ -139,9 +140,10 @@ class Pulse(Visual):
         self, frame: Frame, tick: Tick, features: AudioFeatures, beats: int
     ) -> None:
         self._spacing.advance(tick.delta)
+        flash_target = 0.0
         if beats:
             self._hue.turn(_GOLDEN_ANGLE)
-            self._flash.hit(
+            flash_target = (
                 (0.5 + 0.5 * features.beat_strength)
                 * features.percussiveness
                 * self._spacing.take()
@@ -150,7 +152,7 @@ class Pulse(Visual):
         _tune(self._brightness, features.percussiveness)
         bass = max(features.level("bass"), features.level("low mid") * 0.6)
         level = self._brightness.update(bass, tick.delta)
-        flash = self._flash.update(0.0, tick.delta)
+        flash = self._flash.update(flash_target, tick.delta)
 
         # Percussive material needs headroom above the sustained level for the
         # flash to land in; without beats that headroom is only lost brightness.
