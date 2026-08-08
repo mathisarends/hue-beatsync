@@ -45,7 +45,7 @@ _CENTROID_RANGE = (80.0, 6000.0)
 _MIN_BEAT_GAP = 0.26
 _ONSET_BANDS = 24
 _ONSET_RANGE = (40.0, 12000.0)
-_ONSET_LOBES = ((70.0, 1.0, 1.0), (2200.0, 1.15, 0.95))
+_ONSET_LOBES = ((70.0, 1.0, 0.65), (2200.0, 1.15, 1.35))
 _ONSET_BASE_WEIGHT = 0.15
 _ONSET_FLOOR_RATIO = 1e-3
 _FLUX_MARGIN = 0.4
@@ -319,12 +319,12 @@ class _OnsetDetector:
 def _onset_weights(edges: tuple[float, ...]) -> np.ndarray:
     """Weight the flux toward the drums a listener hears as the rhythm.
 
-    Two lobes, one octave wide each: the kick around 70 Hz and the snare and
-    clap region around 2 kHz. The backbeat is what makes a track bounce, and it
-    lives in the second lobe, so a plain tilt toward the low end - which is the
-    obvious way to find a kick - throws the rhythm away. Everything above rolls
-    off toward a small floor, because a sixteenth note hi-hat pattern otherwise
-    dominates the sum and the lights follow the filler instead of the groove.
+    The dominant lobe covers the snare and clap region around 2 kHz, with a
+    smaller supporting lobe around the kick at 70 Hz. The backbeat is what makes
+    a track bounce, so a plain tilt toward the low end throws the rhythm away.
+    Everything above rolls off toward a small floor, because a sixteenth note
+    hi-hat pattern otherwise dominates the sum and the lights follow the filler
+    instead of the groove.
     """
     centers = np.sqrt(np.array(edges[:-1]) * np.array(edges[1:]))
     weights = np.full(len(centers), _ONSET_BASE_WEIGHT)

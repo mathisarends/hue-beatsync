@@ -25,8 +25,9 @@ context manager.
 
 Two settings decide how the room reads. `floor` is the brightness the lamps
 never fall below while anything is playing, so a quiet passage stays visible
-instead of reading as off; the room still fades out on real silence. `gamma`
-above 1 restores contrast if the result looks too flat.
+instead of reading as off; silence settles into a still dimmer glow. `gamma`
+above 1 restores contrast if the result looks too flat. Beat flashes stay in
+sync, while color transitions finish before another beat can choose a new hue.
 
 Audio capture, spectral analysis and visual rendering remain independently
 available for applications that need lower-level control.

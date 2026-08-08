@@ -19,9 +19,10 @@ _DEFAULT_FLOOR = 0.18
 _CALM_ENVELOPE = (0.12, 0.9)
 _PUNCHY_ENVELOPE = (0.015, 0.22)
 
-_HUE_TURNS_PER_SECOND = 1.2
+_HUE_TURNS_PER_SECOND = 0.35
 
 _PRESENCE_FADE = (0.15, 1.2)
+_IDLE_PRESENCE = 0.65
 
 _BOUNCE_GAP = 0.45
 
@@ -60,7 +61,8 @@ class Visual:
         features = self._analyzer.features
         beats = features.beats - self._seen_beats
         self._seen_beats = features.beats
-        self._presence.update(0.0 if features.silent else 1.0, tick.delta)
+        presence = _IDLE_PRESENCE if features.silent else 1.0
+        self._presence.update(presence, tick.delta)
         self.paint(frame, tick, features, beats)
 
     def paint(
@@ -74,8 +76,8 @@ class Visual:
         A Hue lamp stops being interesting well before zero, so a quiet passage
         driving 0.05 reads as off rather than as quiet. Lifting the whole range
         above a floor keeps it visible. The floor rides along with the presence
-        envelope, so real silence still fades the room out instead of parking it
-        at a permanent dim glow.
+        envelope. Silence settles at a reduced presence instead of making a
+        quiet bridge look as if the entertainment stream stopped.
         """
         shaped = min(max(level, 0.0), 1.0) ** self._gamma
         return (self._floor + (1.0 - self._floor) * shaped) * self._presence.value
@@ -138,7 +140,7 @@ class Pulse(Visual):
     ) -> None:
         self._spacing.advance(tick.delta)
         if beats:
-            self._hue.turn(_GOLDEN_ANGLE * beats)
+            self._hue.turn(_GOLDEN_ANGLE)
             self._flash.hit(
                 (0.5 + 0.5 * features.beat_strength)
                 * features.percussiveness
@@ -194,8 +196,8 @@ class Sweep(Visual):
     ) -> None:
         self._spacing.advance(tick.delta)
         if beats:
-            self._hue += _GOLDEN_ANGLE * beats
-            self._background.turn(_GOLDEN_ANGLE * beats)
+            if self._background.turn(_GOLDEN_ANGLE):
+                self._hue = self._background.target
             strength = (0.55 + 0.45 * features.beat_strength) * self._spacing.take()
             self._waves.append(_Wave(self._hue, strength, self._start))
 
@@ -300,8 +302,11 @@ class _HueDrift:
         self.value = 0.0
         self.target = 0.0
 
-    def turn(self, amount: float) -> None:
+    def turn(self, amount: float) -> bool:
+        if self.value != self.target:
+            return False
         self.target = (self.target + amount) % 1.0
+        return True
 
     def advance(self, delta: float) -> float:
         distance = (self.target - self.value + 0.5) % 1.0 - 0.5

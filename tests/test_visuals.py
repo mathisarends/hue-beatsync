@@ -90,14 +90,14 @@ def test_quiet_audio_still_reaches_the_visible_range(name, analyzer):
 
 
 @pytest.mark.parametrize("name", visual_names())
-def test_silence_fades_the_room_out(name, analyzer):
+def test_silence_settles_to_a_dim_visible_glow(name, analyzer):
     visual = create_visual(name, {1: 0.0}, analyzer, floor=0.2)
     run(visual, analyzer, features())
     silent = features(levels=(0.0,) * 5, energy=0.0, silent=True)
 
     frame = run(visual, analyzer, silent, seconds=8.0)
 
-    assert brightnesses(frame)[-1] < 0.02
+    assert 0.1 < brightnesses(frame)[-1] < 0.15
 
 
 def test_pulse_eases_between_hues_instead_of_jumping(analyzer):
@@ -109,6 +109,17 @@ def test_pulse_eases_between_hues_instead_of_jumping(analyzer):
     steps = colors(frame)
     assert len(set(steps)) > 1
     assert steps[0] != steps[-1]
+
+
+def test_fast_beats_do_not_retarget_an_unfinished_hue_transition(analyzer):
+    visual = create_visual("pulse", {1: 0.0}, analyzer)
+    run(visual, analyzer, features(beats=1), seconds=0.02)
+    target = visual._hue.target
+
+    for beat in range(2, 8):
+        run(visual, analyzer, features(beats=beat), seconds=0.1)
+
+    assert visual._hue.target == target
 
 
 def test_crowded_beats_flash_weaker_than_spaced_ones(analyzer):
