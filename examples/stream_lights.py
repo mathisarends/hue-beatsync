@@ -29,7 +29,8 @@ async def main() -> None:
         exclusive=args.exclusive,
         gain=args.gain,
     )
-    await sync.run(args.seconds)
+    async with sync:
+        await sync.run(args.seconds)
 
 
 def _parse_args() -> argparse.Namespace:

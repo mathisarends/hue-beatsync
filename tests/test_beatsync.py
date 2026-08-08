@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from hue_beatsync import beatsync
 from hue_beatsync.audio.sounddevice import AudioDevice
 from hue_beatsync.beatsync import BeatSync
 
@@ -53,6 +54,19 @@ class Entertainment:
         return self.stream_instance
 
 
+class Hue:
+    def __init__(self, entertainment):
+        self.entertainment = entertainment
+        self.open = False
+
+    async def __aenter__(self):
+        self.open = True
+        return self
+
+    async def __aexit__(self, *_args):
+        self.open = False
+
+
 @pytest.fixture
 def device():
     return AudioDevice(2, "Microphone", 48_000, 2, "WASAPI")
@@ -63,51 +77,76 @@ def area():
     return SimpleNamespace(name="Music", is_streaming=False)
 
 
-async def test_run_connects_capture_analysis_visual_and_stream(device, area):
+async def test_context_connects_capture_analysis_visual_and_stream(
+    monkeypatch, device, area
+):
     entertainment = Entertainment(area)
-    hue = SimpleNamespace(entertainment=entertainment)
-    sync = BeatSync("Music", hue=hue, device=device, mode="spectrum", rate=40)
+    hue = Hue(entertainment)
+    monkeypatch.setattr(beatsync, "Hueify", lambda: hue)
+    sync = BeatSync("Music", device=device, mode="spectrum", rate=40)
     capture = Capture()
     sync.capture = capture
 
-    await sync.run()
+    async with sync:
+        assert hue.open is True
+        assert capture.started is True
+        assert entertainment.stream_instance.open is True
+        await sync.run()
 
     assert sync.stream is entertainment.stream_instance
     assert sync.visual is entertainment.stream_instance.visual
     assert entertainment.opened is area
     assert entertainment.rate == 40
+    assert hue.open is False
     assert capture.started is False
+    assert entertainment.stream_instance.open is False
 
 
-async def test_run_rejects_an_area_owned_by_another_application(device):
+async def test_context_rejects_an_area_owned_by_another_application(
+    monkeypatch, device
+):
     area = SimpleNamespace(name="Music", is_streaming=True)
     entertainment = Entertainment(area)
-    sync = BeatSync(
-        "Music", hue=SimpleNamespace(entertainment=entertainment), device=device
-    )
+    hue = Hue(entertainment)
+    monkeypatch.setattr(beatsync, "Hueify", lambda: hue)
+    sync = BeatSync("Music", device=device)
 
     with pytest.raises(RuntimeError, match="already streaming"):
-        await sync.run()
+        async with sync:
+            pass
 
     assert entertainment.opened is None
+    assert hue.open is False
 
 
-async def test_run_propagates_capture_callback_failure(device, area):
+async def test_run_propagates_capture_callback_failure(monkeypatch, device, area):
     entertainment = Entertainment(area)
-    sync = BeatSync(
-        area, hue=SimpleNamespace(entertainment=entertainment), device=device
-    )
+    monkeypatch.setattr(beatsync, "Hueify", lambda: Hue(entertainment))
+    sync = BeatSync("Music", device=device)
     failure = ValueError("analysis failed")
     sync.capture = Capture(failure)
 
     with pytest.raises(ValueError, match="analysis failed"):
-        await sync.run()
+        async with sync:
+            await sync.run()
 
     assert entertainment.stream_instance.open is False
 
 
 async def test_run_rejects_negative_duration(device):
-    sync = BeatSync("Music", hue=SimpleNamespace(), device=device)
+    sync = BeatSync("Music", device=device)
 
     with pytest.raises(ValueError, match="seconds"):
         await sync.run(-1)
+
+
+async def test_run_requires_open_context(device):
+    sync = BeatSync("Music", device=device)
+
+    with pytest.raises(RuntimeError, match="async with"):
+        await sync.run()
+
+
+def test_area_name_must_not_be_empty(device):
+    with pytest.raises(ValueError, match="area_name"):
+        BeatSync("  ", device=device)

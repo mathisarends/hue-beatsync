@@ -9,12 +9,18 @@ import asyncio
 
 from hue_beatsync import BeatSync
 
-asyncio.run(BeatSync("Musikbereich").run())
+
+async def main() -> None:
+    async with BeatSync("Musikbereich") as sync:
+        await sync.run()
+
+
+asyncio.run(main())
 ```
 
 Pass `device`, `mode`, `rate`, `sensitivity`, `gamma`, or `max_frequency` only
-when their defaults need changing. An existing `Hueify` client can be supplied
-as `hue=client`; otherwise `BeatSync` creates and closes one for the run.
+when their defaults need changing. `BeatSync` creates and closes the Hue client,
+entertainment stream, and audio capture inside its context manager.
 
 Audio capture, spectral analysis and visual rendering remain independently
 available for applications that need lower-level control.
