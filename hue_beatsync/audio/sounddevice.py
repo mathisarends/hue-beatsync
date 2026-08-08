@@ -153,4 +153,12 @@ class SoundDeviceCapture:
 
 
 def _load_sounddevice() -> Any:
-    return import_module("sounddevice")
+    try:
+        return import_module("sounddevice")
+    except ModuleNotFoundError as error:
+        if error.name != "sounddevice":
+            raise
+        raise RuntimeError(
+            "The sounddevice backend requires the optional 'sounddevice' extra. "
+            "Install it with 'pip install hue-beatsync[sounddevice]'."
+        ) from error

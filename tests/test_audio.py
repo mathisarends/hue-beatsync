@@ -61,3 +61,13 @@ def test_sounddevice_capture_implements_capture_contract(devices):
     capture: AudioCapture = SoundDeviceCapture(devices[0], lambda *_: None)
 
     assert capture.samplerate == 48_000
+
+
+def test_missing_optional_dependency_has_install_hint(monkeypatch):
+    missing = ModuleNotFoundError(name="sounddevice")
+    monkeypatch.setattr(
+        sounddevice, "import_module", lambda _name: (_ for _ in ()).throw(missing)
+    )
+
+    with pytest.raises(RuntimeError, match=r"hue-beatsync\[sounddevice\]"):
+        sounddevice.input_devices()

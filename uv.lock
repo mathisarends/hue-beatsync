@@ -355,6 +355,10 @@ source = { virtual = "." }
 dependencies = [
     { name = "hueify", extra = ["entertainment"] },
     { name = "numpy" },
+]
+
+[package.optional-dependencies]
+sounddevice = [
     { name = "sounddevice" },
 ]
 
@@ -373,8 +377,9 @@ dev = [
 requires-dist = [
     { name = "hueify", extras = ["entertainment"], specifier = ">=0.9.0" },
     { name = "numpy", specifier = ">=2.5.1" },
-    { name = "sounddevice", specifier = ">=0.5.2" },
+    { name = "sounddevice", marker = "extra == 'sounddevice'", specifier = ">=0.5.2" },
 ]
+provides-extras = ["sounddevice"]
 
 [package.metadata.requires-dev]
 dev = [
