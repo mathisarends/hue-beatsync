@@ -1,5 +1,5 @@
-from server.sync.base import SyncAlreadyRunning, SyncManager, SyncNotRunning
-from server.sync.beatsync_manager import BeatSyncManager
+from .base import SyncAlreadyRunning, SyncManager, SyncNotRunning
+from .beatsync_manager import BeatSyncManager
 
 __all__ = [
     "BeatSyncManager",
