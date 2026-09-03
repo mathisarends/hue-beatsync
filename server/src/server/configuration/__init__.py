@@ -1,4 +1,4 @@
 from server.configuration.base import DefaultsStore
-from server.configuration.yaml_store import YamlDefaultsStore
+from server.configuration.yml_store import YmlDefaultsStore
 
-__all__ = ["DefaultsStore", "YamlDefaultsStore"]
+__all__ = ["DefaultsStore", "YmlDefaultsStore"]

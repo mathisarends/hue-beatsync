@@ -463,7 +463,7 @@ source = { editable = "server" }
 dependencies = [
     { name = "dishka" },
     { name = "fastapi" },
-    { name = "hue-beatsync" },
+    { name = "hue-beatsync", extra = ["sounddevice"] },
     { name = "pyyaml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -472,7 +472,7 @@ dependencies = [
 requires-dist = [
     { name = "dishka", specifier = ">=1.4.0" },
     { name = "fastapi", specifier = ">=0.124.0" },
-    { name = "hue-beatsync", editable = "lichtorgel" },
+    { name = "hue-beatsync", extras = ["sounddevice"], editable = "lichtorgel" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]

@@ -2,7 +2,8 @@ from collections.abc import AsyncIterable
 
 from dishka import Provider, Scope, make_async_container, provide
 
-from server.configuration import DefaultsStore, YamlDefaultsStore
+from server.configuration import DefaultsStore, YmlDefaultsStore
+from server.discovery import Discovery, HueBeatSyncDiscovery
 from server.sync import BeatSyncManager, SyncManager
 
 
@@ -20,7 +21,11 @@ class ManagerProvider(Provider):
 
     @provide
     def defaults_store(self) -> DefaultsStore:
-        return YamlDefaultsStore()
+        return YmlDefaultsStore()
+
+    @provide
+    def discovery(self) -> Discovery:
+        return HueBeatSyncDiscovery()
 
 
 container = make_async_container(ManagerProvider())

@@ -2,10 +2,31 @@ from dishka.integrations.fastapi import DishkaRoute, FromDishka
 from fastapi import APIRouter, HTTPException
 
 from server.configuration import DefaultsStore
-from server.schemas import StatusResponse, SyncSettings
+from server.discovery import Discovery, DiscoveryUnavailable
+from server.schemas import AreaInfo, AudioDeviceInfo, StatusResponse, SyncSettings
 from server.sync import SyncAlreadyRunning, SyncManager, SyncNotRunning
 
 router = APIRouter(route_class=DishkaRoute)
+
+
+@router.get(
+    "/devices", response_model=list[AudioDeviceInfo], operation_id="list_devices"
+)
+async def list_devices(discovery: FromDishka[Discovery]) -> list[AudioDeviceInfo]:
+    """The audio inputs that can be passed as `device`."""
+    try:
+        return await discovery.devices()
+    except DiscoveryUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@router.get("/areas", response_model=list[AreaInfo], operation_id="list_areas")
+async def list_areas(discovery: FromDishka[Discovery]) -> list[AreaInfo]:
+    """The Hue entertainment areas that can be passed as `area`."""
+    try:
+        return await discovery.areas()
+    except DiscoveryUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @router.get("/status", response_model=StatusResponse, operation_id="get_status")

@@ -6,21 +6,13 @@ import yaml
 from server.configuration.base import DefaultsStore
 from server.schemas import ResolvedSettings, SyncSettings
 
-_DEFAULTS_PATH = Path.home() / ".hue-beatsync" / "lichtorgel.yaml"
-
-_HARD_DEFAULTS: dict[str, Any] = {
-    "visual": "pulse",
-    "rate": 50,
-    "sensitivity": 1.2,
-    "gamma": 1.0,
-    "floor": 0.18,
-    "max_frequency": 14_000.0,
-    "exclusive": False,
-    "gain": 1.0,
-}
+# yml_store.py lives at <repo>/server/src/server/configuration/, so the
+# repo root is five levels up.
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_DEFAULTS_PATH = _REPO_ROOT / "lichtorgel.yml"
 
 
-class YamlDefaultsStore(DefaultsStore):
+class YmlDefaultsStore(DefaultsStore):
     """DefaultsStore backed by a YAML file on disk."""
 
     def __init__(self, path: Path | None = None) -> None:
@@ -32,29 +24,30 @@ class YamlDefaultsStore(DefaultsStore):
         return self._defaults
 
     def update(self, changes: SyncSettings) -> SyncSettings:
-        merged = {
-            **self._defaults.model_dump(exclude_none=True),
-            **changes.model_dump(exclude_unset=True, exclude_none=True),
-        }
-        self._defaults = SyncSettings(**merged)
+        self._defaults = SyncSettings.model_validate(
+            _provided(self._defaults) | _provided(changes)
+        )
         self._save()
         return self._defaults
 
     def resolve(self, request: SyncSettings) -> ResolvedSettings:
-        merged = {
-            **_HARD_DEFAULTS,
-            **self._defaults.model_dump(exclude_none=True),
-            **request.model_dump(exclude_unset=True, exclude_none=True),
-        }
-        return ResolvedSettings(**merged)
+        return ResolvedSettings.model_validate(
+            _provided(self._defaults) | _provided(request)
+        )
 
     def _load(self) -> SyncSettings:
         if not self._path.exists():
             return SyncSettings()
         data = yaml.safe_load(self._path.read_text()) or {}
-        return SyncSettings(**data)
+        return SyncSettings.model_validate(data)
 
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        data = self._defaults.model_dump(exclude_none=True)
+        data = _provided(self._defaults)
         self._path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def _provided(settings: SyncSettings) -> dict[str, Any]:
+    """The fields a caller actually filled in. Every SyncSettings field
+    defaults to None, so dropping the Nones leaves exactly those."""
+    return settings.model_dump(exclude_none=True)

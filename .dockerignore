@@ -1,0 +1,13 @@
+.git/
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.vscode/
+.idea/
+*.wav
+*.mp3
+recordings/

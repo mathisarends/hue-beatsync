@@ -1,0 +1,10 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./lichtorgel.yml:/app/lichtorgel.yml
+    restart: unless-stopped
