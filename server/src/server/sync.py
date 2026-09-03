@@ -1,7 +1,7 @@
 import asyncio
 from typing import Protocol
 
-from hue_beatsync import BeatSync
+from lichtorgel import Lichtorgel
 
 from server.schemas import ResolvedSettings
 
@@ -26,11 +26,11 @@ class SyncManager(Protocol):
     async def stop(self) -> None: ...
 
 
-class BeatSyncManager(SyncManager):
-    """Owns the single BeatSync stream this server is allowed to run."""
+class LichtorgelManager(SyncManager):
+    """Owns the single Lichtorgel stream this server is allowed to run."""
 
     def __init__(self) -> None:
-        self._sync: BeatSync | None = None
+        self._lichtorgel: Lichtorgel | None = None
         self._task: asyncio.Task[None] | None = None
 
     @property
@@ -39,14 +39,14 @@ class BeatSyncManager(SyncManager):
 
     @property
     def area(self) -> str | None:
-        return self._sync.area_name if self._sync else None
+        return self._lichtorgel.area_name if self._lichtorgel else None
 
     async def start(self, settings: ResolvedSettings) -> None:
         if self.running:
             raise SyncAlreadyRunning(f"already streaming to {self.area!r}")
         if settings.area is None:
             raise ValueError("area is required")
-        sync = BeatSync(
+        lichtorgel = Lichtorgel(
             settings.area,
             device=settings.audio.device,
             mode=settings.visual.mode,
@@ -58,19 +58,19 @@ class BeatSyncManager(SyncManager):
             exclusive=settings.audio.exclusive,
             gain=settings.audio.gain,
         )
-        await sync.__aenter__()
-        self._sync = sync
-        self._task = asyncio.create_task(sync.run())
+        await lichtorgel.__aenter__()
+        self._lichtorgel = lichtorgel
+        self._task = asyncio.create_task(lichtorgel.run())
 
     async def stop(self) -> None:
-        if not self.running or self._sync is None or self._task is None:
+        if not self.running or self._lichtorgel is None or self._task is None:
             raise SyncNotRunning("no sync is running")
-        task, sync = self._task, self._sync
+        task, lichtorgel = self._task, self._lichtorgel
         self._task = None
-        self._sync = None
+        self._lichtorgel = None
         task.cancel()
         try:
             await task
         except asyncio.CancelledError:
             pass
-        await sync.__aexit__(None, None, None)
+        await lichtorgel.__aexit__(None, None, None)

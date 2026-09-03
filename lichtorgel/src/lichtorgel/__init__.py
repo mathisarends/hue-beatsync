@@ -1,18 +1,18 @@
-from hue_beatsync.analysis import (
+from lichtorgel.analysis import (
     BAND_NAMES,
     AudioFeatures,
     SpectralAnalyzer,
     band_edges,
 )
-from hue_beatsync.audio import (
+from lichtorgel.audio import (
     AudioCapture,
     AudioDevice,
     SoundDeviceCapture,
     input_devices,
     resolve_device,
 )
-from hue_beatsync.beatsync import BeatSync
-from hue_beatsync.visuals import (
+from lichtorgel.lichtorgel import Lichtorgel
+from lichtorgel.visuals import (
     Pulse,
     Spectrum,
     Sweep,
@@ -27,7 +27,7 @@ __all__ = [
     "AudioCapture",
     "AudioDevice",
     "AudioFeatures",
-    "BeatSync",
+    "Lichtorgel",
     "Pulse",
     "SpectralAnalyzer",
     "Spectrum",

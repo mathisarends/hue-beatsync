@@ -8,7 +8,7 @@
 - Prefix names with `_` only when they are private to their defining module.
   Names imported by another module are part of the defining module's public API
   and must not have an underscore prefix.
-- Keep the package-level API explicit through `hue_beatsync.__init__`. A name may
+- Keep the package-level API explicit through `lichtorgel.__init__`. A name may
   be public in a submodule without being re-exported at package level.
 - Keep public interfaces above private implementation details where practical.
 - Comments document architectural decisions, constraints, or information that

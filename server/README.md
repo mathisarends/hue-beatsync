@@ -1,11 +1,11 @@
-# hue-beatsync-server
+# lichtorgel-server
 
-Minimal FastAPI server that owns a single long-running `BeatSync` instance
+Minimal FastAPI server that owns a single long-running `Lichtorgel` instance
 and exposes it as `start` / `stop` / `status` over HTTP, so the CLI (or
 anything else) can drive it without holding the process itself.
 
 ```bash
-uv run --package hue-beatsync-server uvicorn server.main:app --port 8765
+uv run --package lichtorgel-server uvicorn server.main:app --port 8765
 ```
 
 `scripts/serve.sh` (Git Bash, WSL, Linux) and `scripts\serve.ps1`

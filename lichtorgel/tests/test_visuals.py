@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from hue_beatsync.analysis import AudioFeatures, SpectralAnalyzer
-from hue_beatsync.visuals import (
+from lichtorgel.analysis import AudioFeatures, SpectralAnalyzer
+from lichtorgel.visuals import (
     Pulse,
     Spectrum,
     Sweep,

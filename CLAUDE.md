@@ -32,5 +32,5 @@ In `__init__.py` files, always use relative imports, not absolute ones.
 from .sounddevice import SoundDeviceCapture
 
 # no
-from hue_beatsync.audio.sounddevice import SoundDeviceCapture
+from lichtorgel.audio.sounddevice import SoundDeviceCapture
 ```

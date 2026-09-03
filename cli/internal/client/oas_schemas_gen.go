@@ -817,7 +817,7 @@ func (s *StatusResponse) SetArea(val OptNilString) {
 
 func (*StatusResponse) startSyncRes() {}
 
-// BeatSync stream settings. Any field left unset falls back to a configured default (see /defaults),
+// Lichtorgel stream settings. Any field left unset falls back to a configured default (see /defaults),
 // and then to the built-in default.
 // Ref: #/components/schemas/SyncSettings
 type SyncSettings struct {

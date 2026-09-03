@@ -6,7 +6,7 @@ import server.main as main_module
 def test_application_exposes_the_documented_routes() -> None:
     schema = main_module.app.openapi()
 
-    assert schema["info"]["title"] == "hue-beatsync server"
+    assert schema["info"]["title"] == "lichtorgel server"
     assert set(schema["paths"]) == {
         "/areas",
         "/defaults",

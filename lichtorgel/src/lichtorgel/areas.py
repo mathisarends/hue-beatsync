@@ -5,7 +5,7 @@ from hueify.models import EntertainmentConfiguration
 
 
 @dataclass(frozen=True, slots=True)
-class BeatSyncArea:
+class EntertainmentArea:
     id: str
     name: str
     active: bool
@@ -21,7 +21,7 @@ class AreaNotFoundError(ValueError):
         )
 
 
-async def list_areas() -> list[BeatSyncArea]:
+async def list_areas() -> list[EntertainmentArea]:
     async with Hueify() as hue:
         response = await hue.entertainment.list()
     return sorted(
@@ -30,7 +30,7 @@ async def list_areas() -> list[BeatSyncArea]:
     )
 
 
-async def stop_area(wanted: str) -> BeatSyncArea:
+async def stop_area(wanted: str) -> EntertainmentArea:
     if not wanted.strip():
         raise ValueError("area must not be empty")
 
@@ -43,8 +43,8 @@ async def stop_area(wanted: str) -> BeatSyncArea:
     return replace(area, active=False)
 
 
-def _area(configuration: EntertainmentConfiguration) -> BeatSyncArea:
-    return BeatSyncArea(
+def _area(configuration: EntertainmentConfiguration) -> EntertainmentArea:
+    return EntertainmentArea(
         id=str(configuration.id),
         name=configuration.name,
         active=configuration.is_streaming,
@@ -52,7 +52,7 @@ def _area(configuration: EntertainmentConfiguration) -> BeatSyncArea:
     )
 
 
-def _find_area(wanted: str, areas: list[BeatSyncArea]) -> BeatSyncArea:
+def _find_area(wanted: str, areas: list[EntertainmentArea]) -> EntertainmentArea:
     normalized = wanted.strip().casefold()
     for area in areas:
         if area.id.casefold() == normalized or area.name.casefold() == normalized:

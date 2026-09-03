@@ -1,11 +1,11 @@
 [project]
-name = "hue-beatsync-server"
+name = "lichtorgel-server"
 version = "0.1.0"
-description = "Minimal API server that manages a long-running BeatSync process"
+description = "Minimal API server that manages a long-running Lichtorgel process"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "hue-beatsync[sounddevice]",
+    "lichtorgel[sounddevice]",
     "dishka>=1.4.0",
     "fastapi>=0.124.0",
     "pyyaml>=6.0.2",
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-hue-beatsync = { workspace = true }
+lichtorgel = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

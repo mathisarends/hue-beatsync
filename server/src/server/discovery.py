@@ -2,9 +2,9 @@ import asyncio
 from typing import Protocol
 
 import httpx
-from hue_beatsync import AudioDevice, input_devices, resolve_device
-from hue_beatsync.areas import BeatSyncArea, list_areas
 from hueify.errors import HueifyError
+from lichtorgel import AudioDevice, input_devices, resolve_device
+from lichtorgel.areas import EntertainmentArea, list_areas
 
 from server.schemas import AreaInfo, AudioDeviceInfo
 
@@ -19,7 +19,7 @@ class Discovery(Protocol):
     async def areas(self) -> list[AreaInfo]: ...
 
 
-class HueBeatSyncDiscovery(Discovery):
+class HueDiscovery(Discovery):
     """Discovery backed by the local audio backend and the Hue bridge."""
 
     async def devices(self) -> list[AudioDeviceInfo]:
@@ -70,7 +70,7 @@ def _device(device: AudioDevice, *, is_default: bool) -> AudioDeviceInfo:
     )
 
 
-def _area(area: BeatSyncArea) -> AreaInfo:
+def _area(area: EntertainmentArea) -> AreaInfo:
     return AreaInfo(
         id=area.id,
         name=area.name,

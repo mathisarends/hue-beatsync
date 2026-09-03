@@ -119,7 +119,7 @@ blocking, and says what to pass.
 edited by hand:
 
 ```bash
-uv run --package hue-beatsync-server python scripts/export_openapi.py
+uv run --package lichtorgel-server python scripts/export_openapi.py
 cd cli && go generate ./...
 ```
 

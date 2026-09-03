@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from hue_beatsync.audio import AudioCapture, sounddevice
-from hue_beatsync.audio.sounddevice import AudioDevice, SoundDeviceCapture
+from lichtorgel.audio import AudioCapture, sounddevice
+from lichtorgel.audio.sounddevice import AudioDevice, SoundDeviceCapture
 
 
 @pytest.fixture
@@ -120,5 +120,5 @@ def test_missing_optional_dependency_has_install_hint(monkeypatch):
         sounddevice, "import_module", lambda _name: (_ for _ in ()).throw(missing)
     )
 
-    with pytest.raises(RuntimeError, match=r"hue-beatsync\[sounddevice\]"):
+    with pytest.raises(RuntimeError, match=r"lichtorgel\[sounddevice\]"):
         sounddevice.input_devices()

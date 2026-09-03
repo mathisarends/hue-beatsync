@@ -4,8 +4,8 @@ from dishka import make_async_container
 import server.dependencies as dependencies_module
 from server.defaults import DefaultsStore, YmlDefaultsStore
 from server.dependencies import ManagerProvider
-from server.discovery import Discovery, HueBeatSyncDiscovery
-from server.sync import BeatSyncManager, SyncManager
+from server.discovery import Discovery, HueDiscovery
+from server.sync import LichtorgelManager, SyncManager
 
 
 @pytest.mark.asyncio
@@ -17,9 +17,9 @@ async def test_provider_wires_production_adapters() -> None:
         defaults = await container.get(DefaultsStore)
         discovery = await container.get(Discovery)
 
-        assert isinstance(manager, BeatSyncManager)
+        assert isinstance(manager, LichtorgelManager)
         assert isinstance(defaults, YmlDefaultsStore)
-        assert isinstance(discovery, HueBeatSyncDiscovery)
+        assert isinstance(discovery, HueDiscovery)
     finally:
         await container.close()
 
@@ -37,7 +37,7 @@ async def test_provider_stops_a_running_manager_on_shutdown(
             self.stopped = True
 
     manager = FakeManager()
-    monkeypatch.setattr(dependencies_module, "BeatSyncManager", lambda: manager)
+    monkeypatch.setattr(dependencies_module, "LichtorgelManager", lambda: manager)
     container = make_async_container(ManagerProvider())
 
     resolved = await container.get(SyncManager)

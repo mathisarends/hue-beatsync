@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Runs the hue-beatsync server natively on this machine.
+# Runs the lichtorgel server natively on this machine.
 #
 # Audio capture needs the host's sound stack, which a Linux container cannot
 # reach - see server/README.md. Works from Git Bash, WSL and Linux;
@@ -47,11 +47,11 @@ fi
 
 # --inexact: the workspace shares one .venv, and a plain sync would
 # prune everything outside this package - the dev tools included.
-uv sync --frozen --inexact --package hue-beatsync-server
+uv sync --frozen --inexact --package lichtorgel-server
 
 # Docker publishes on 0.0.0.0, so a running container holds this port and the
 # bind below fails with a message that does not say which process won it.
-busy=$(uv run --package hue-beatsync-server python - "$bind_host" "$port" <<'PYEOF'
+busy=$(uv run --package lichtorgel-server python - "$bind_host" "$port" <<'PYEOF'
 import socket
 import sys
 
@@ -74,6 +74,6 @@ if [ -n "$busy" ]; then
     exit 1
 fi
 
-echo "hue-beatsync server on http://$bind_host:$port (docs at /docs)"
-exec uv run --package hue-beatsync-server \
+echo "lichtorgel server on http://$bind_host:$port (docs at /docs)"
+exec uv run --package lichtorgel-server \
     uvicorn server.main:app --host "$bind_host" --port "$port" $reload

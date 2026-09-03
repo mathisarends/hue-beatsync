@@ -10,10 +10,10 @@ from server.schemas import (
     ResolvedSettings,
     ResolvedVisual,
 )
-from server.sync import BeatSyncManager, SyncAlreadyRunning, SyncNotRunning
+from server.sync import LichtorgelManager, SyncAlreadyRunning, SyncNotRunning
 
 
-class FakeBeatSync:
+class FakeLichtorgel:
     def __init__(self, area: str, **options: Any) -> None:
         self.area_name = area
         self.options = options
@@ -32,21 +32,21 @@ class FakeBeatSync:
 
 
 @pytest.fixture
-def beat_syncs(monkeypatch: pytest.MonkeyPatch) -> list[FakeBeatSync]:
-    created: list[FakeBeatSync] = []
+def lichtorgeln(monkeypatch: pytest.MonkeyPatch) -> list[FakeLichtorgel]:
+    created: list[FakeLichtorgel] = []
 
-    def create(area: str, **options: Any) -> FakeBeatSync:
-        sync = FakeBeatSync(area, **options)
-        created.append(sync)
-        return sync
+    def create(area: str, **options: Any) -> FakeLichtorgel:
+        lichtorgel = FakeLichtorgel(area, **options)
+        created.append(lichtorgel)
+        return lichtorgel
 
-    monkeypatch.setattr(sync_module, "BeatSync", create)
+    monkeypatch.setattr(sync_module, "Lichtorgel", create)
     return created
 
 
 @pytest.mark.asyncio
 async def test_start_forwards_resolved_settings_and_stop_cleans_up(
-    beat_syncs: list[FakeBeatSync],
+    lichtorgeln: list[FakeLichtorgel],
 ) -> None:
     settings = ResolvedSettings(
         area="Office",
@@ -59,16 +59,16 @@ async def test_start_forwards_resolved_settings_and_stop_cleans_up(
         ),
         visual=ResolvedVisual(mode="sweep", rate=30),
     )
-    manager = BeatSyncManager()
+    manager = LichtorgelManager()
 
     await manager.start(settings)
     await asyncio.sleep(0)
 
-    sync = beat_syncs[0]
+    lichtorgel = lichtorgeln[0]
     assert manager.running is True
     assert manager.area == "Office"
-    assert sync.entered is True
-    assert sync.options == {
+    assert lichtorgel.entered is True
+    assert lichtorgel.options == {
         "device": 3,
         "mode": "sweep",
         "rate": 30,
@@ -84,38 +84,38 @@ async def test_start_forwards_resolved_settings_and_stop_cleans_up(
 
     assert manager.running is False
     assert manager.area is None
-    assert sync.exited is True
+    assert lichtorgel.exited is True
 
 
 @pytest.mark.asyncio
 async def test_start_rejects_missing_area(
-    beat_syncs: list[FakeBeatSync],
+    lichtorgeln: list[FakeLichtorgel],
 ) -> None:
-    manager = BeatSyncManager()
+    manager = LichtorgelManager()
 
     with pytest.raises(ValueError, match="area is required"):
         await manager.start(ResolvedSettings())
 
-    assert beat_syncs == []
+    assert lichtorgeln == []
 
 
 @pytest.mark.asyncio
 async def test_start_rejects_a_second_running_sync(
-    beat_syncs: list[FakeBeatSync],
+    lichtorgeln: list[FakeLichtorgel],
 ) -> None:
-    manager = BeatSyncManager()
+    manager = LichtorgelManager()
     await manager.start(ResolvedSettings(area="Office"))
 
     with pytest.raises(SyncAlreadyRunning, match="Office"):
         await manager.start(ResolvedSettings(area="Kitchen"))
 
-    assert len(beat_syncs) == 1
+    assert len(lichtorgeln) == 1
     await manager.stop()
 
 
 @pytest.mark.asyncio
 async def test_stop_rejects_when_no_sync_is_running() -> None:
-    manager = BeatSyncManager()
+    manager = LichtorgelManager()
 
     with pytest.raises(SyncNotRunning, match="no sync is running"):
         await manager.stop()

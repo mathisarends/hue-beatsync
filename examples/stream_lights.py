@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import contextlib
 
-from hue_beatsync import BeatSync, input_devices, visual_names
+from lichtorgel import Lichtorgel, input_devices, visual_names
 
 _DEFAULT_AREA = "Musikbereich"
 _DEFAULT_SENSITIVITY = 1.2
@@ -19,7 +19,7 @@ async def main() -> None:
             print(device)
         return
 
-    sync = BeatSync(
+    sync = Lichtorgel(
         args.area,
         device=args.device,
         mode=args.mode,

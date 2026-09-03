@@ -1,6 +1,6 @@
 import pytest
 
-from hue_beatsync.smoothing import Envelope, PeakFollower
+from lichtorgel.smoothing import Envelope, PeakFollower
 
 
 def test_envelope_uses_attack_and_release_rates():

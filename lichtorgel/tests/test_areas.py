@@ -3,8 +3,8 @@ from uuid import UUID
 
 import pytest
 
-from hue_beatsync import areas
-from hue_beatsync.areas import AreaNotFoundError, BeatSyncArea
+from lichtorgel import areas
+from lichtorgel.areas import AreaNotFoundError, EntertainmentArea
 
 
 class Entertainment:
@@ -48,8 +48,8 @@ async def test_list_areas_returns_stable_product_models(monkeypatch):
     result = await areas.list_areas()
 
     assert result == [
-        BeatSyncArea(str(UUID(int=5)), "Music", False, 4),
-        BeatSyncArea(str(UUID(int=6)), "Studio", True, 2),
+        EntertainmentArea(str(UUID(int=5)), "Music", False, 4),
+        EntertainmentArea(str(UUID(int=6)), "Studio", True, 2),
     ]
 
 

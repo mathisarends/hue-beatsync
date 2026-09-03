@@ -1,25 +1,25 @@
-# hue-beatsync
+# lichtorgel
 
-`hue-beatsync` turns live audio input into frames for a Philips Hue
+`lichtorgel` turns live audio input into frames for a Philips Hue
 entertainment area. With Hue credentials in the environment, the complete
 workflow is:
 
 ```python
 import asyncio
 
-from hue_beatsync import BeatSync
+from lichtorgel import Lichtorgel
 
 
 async def main() -> None:
-    async with BeatSync("Musikbereich") as sync:
-        await sync.run()
+    async with Lichtorgel("Musikbereich") as lichtorgel:
+        await lichtorgel.run()
 
 
 asyncio.run(main())
 ```
 
 Pass `device`, `mode`, `rate`, `sensitivity`, `gamma`, `floor`, or
-`max_frequency` only when their defaults need changing. `BeatSync` creates and
+`max_frequency` only when their defaults need changing. `Lichtorgel` creates and
 closes the Hue client, entertainment stream, and audio capture inside its
 context manager.
 
@@ -35,11 +35,11 @@ available for applications that need lower-level control.
 Install the system-audio backend only when it is needed:
 
 ```powershell
-pip install "hue-beatsync[sounddevice]"
+pip install "lichtorgel[sounddevice]"
 ```
 
 ```python
-from hue_beatsync import SoundDeviceCapture, SpectralAnalyzer, resolve_device
+from lichtorgel import SoundDeviceCapture, SpectralAnalyzer, resolve_device
 
 device = resolve_device("Microphone")
 analyzer = SpectralAnalyzer(device.samplerate)

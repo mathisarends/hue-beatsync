@@ -26,7 +26,7 @@ class VisualSettings(BaseModel):
 
 
 class SyncSettings(BaseModel):
-    """BeatSync stream settings. Any field left unset falls back to a
+    """Lichtorgel stream settings. Any field left unset falls back to a
     configured default (see /defaults), and then to the built-in default."""
 
     area: str | None = None

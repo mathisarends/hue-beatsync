@@ -6,13 +6,13 @@ from typing import Self
 from hueify import Hueify
 from hueify.entertainment import EntertainmentStream
 
-from hue_beatsync.analysis import SpectralAnalyzer, band_edges
-from hue_beatsync.audio.sounddevice import (
+from lichtorgel.analysis import SpectralAnalyzer, band_edges
+from lichtorgel.audio.sounddevice import (
     AudioDevice,
     SoundDeviceCapture,
     resolve_device,
 )
-from hue_beatsync.visuals import Visual, channel_positions, create_visual
+from lichtorgel.visuals import Visual, channel_positions, create_visual
 
 _DEFAULT_MODE = "pulse"
 _DEFAULT_RATE = 50
@@ -23,7 +23,7 @@ _DEFAULT_MAX_FREQUENCY = 14_000.0
 _FAILURE_POLL_INTERVAL = 0.05
 
 
-class BeatSync:
+class Lichtorgel:
     """Stream a sounddevice input to a Hue entertainment area."""
 
     def __init__(
@@ -65,7 +65,7 @@ class BeatSync:
 
     async def __aenter__(self) -> Self:
         if self._stack is not None:
-            raise RuntimeError("BeatSync is already open")
+            raise RuntimeError("Lichtorgel is already open")
 
         stack = AsyncExitStack()
         try:
@@ -109,11 +109,11 @@ class BeatSync:
     async def run(self, seconds: float | None = None) -> None:
         """Run until cancelled, the stream stops, or ``seconds`` elapse."""
         if self._running:
-            raise RuntimeError("BeatSync is already running")
+            raise RuntimeError("Lichtorgel is already running")
         if seconds is not None and seconds < 0:
             raise ValueError("seconds must not be negative")
         if self._stack is None or self.stream is None or self.visual is None:
-            raise RuntimeError("use 'async with BeatSync(...)' before calling run()")
+            raise RuntimeError("use 'async with Lichtorgel(...)' before calling run()")
 
         self._running = True
         try:

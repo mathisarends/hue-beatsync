@@ -1,8 +1,8 @@
 import pytest
 
-from hue_beatsync import diagnostics
-from hue_beatsync.analysis import AudioFeatures
-from hue_beatsync.audio import AudioDevice
+from lichtorgel import diagnostics
+from lichtorgel.analysis import AudioFeatures
+from lichtorgel.audio import AudioDevice
 
 SILENT = AudioFeatures((0.0,) * 5, 0.0, 0.5, 4, 0.0, 0.0, None, 0.0, True)
 ACTIVE = AudioFeatures(

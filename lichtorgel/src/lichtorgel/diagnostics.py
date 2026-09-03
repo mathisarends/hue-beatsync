@@ -3,8 +3,8 @@ import statistics
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from hue_beatsync.analysis import AudioFeatures, SpectralAnalyzer
-from hue_beatsync.audio import AudioDevice, SoundDeviceCapture, resolve_device
+from lichtorgel.analysis import AudioFeatures, SpectralAnalyzer
+from lichtorgel.audio import AudioDevice, SoundDeviceCapture, resolve_device
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,7 +5,7 @@ from typing import Any, Self
 
 import numpy as np
 
-from hue_beatsync.audio.ports import BlockListener
+from lichtorgel.audio.ports import BlockListener
 
 _DEFAULT_BLOCK_SIZE = 512
 
@@ -191,5 +191,5 @@ def _load_sounddevice() -> Any:
             raise
         raise RuntimeError(
             "The sounddevice backend requires the optional 'sounddevice' extra. "
-            "Install it with 'pip install hue-beatsync[sounddevice]'."
+            "Install it with 'pip install lichtorgel[sounddevice]'."
         ) from error

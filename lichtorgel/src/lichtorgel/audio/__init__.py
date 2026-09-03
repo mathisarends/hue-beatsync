@@ -1,5 +1,5 @@
-from hue_beatsync.audio.ports import AudioCapture, BlockListener
-from hue_beatsync.audio.sounddevice import (
+from lichtorgel.audio.ports import AudioCapture, BlockListener
+from lichtorgel.audio.sounddevice import (
     AudioDevice,
     SoundDeviceCapture,
     input_devices,

@@ -7,8 +7,8 @@ from hueify.color import RGB
 from hueify.entertainment import Frame, Tick
 from hueify.models import EntertainmentChannel
 
-from hue_beatsync.analysis import BAND_NAMES, AudioFeatures, SpectralAnalyzer
-from hue_beatsync.smoothing import Envelope
+from lichtorgel.analysis import BAND_NAMES, AudioFeatures, SpectralAnalyzer
+from lichtorgel.smoothing import Envelope
 
 _BAND_HUES = (0.0, 0.08, 0.30, 0.52, 0.75)
 _GOLDEN_ANGLE = 0.381966

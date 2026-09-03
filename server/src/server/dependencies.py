@@ -3,8 +3,8 @@ from collections.abc import AsyncIterable
 from dishka import Provider, Scope, make_async_container, provide
 
 from server.defaults import DefaultsStore, YmlDefaultsStore
-from server.discovery import Discovery, HueBeatSyncDiscovery
-from server.sync import BeatSyncManager, SyncManager
+from server.discovery import Discovery, HueDiscovery
+from server.sync import LichtorgelManager, SyncManager
 
 
 class ManagerProvider(Provider):
@@ -12,7 +12,7 @@ class ManagerProvider(Provider):
 
     @provide
     async def sync_manager(self) -> AsyncIterable[SyncManager]:
-        manager = BeatSyncManager()
+        manager = LichtorgelManager()
         try:
             yield manager
         finally:
@@ -25,7 +25,7 @@ class ManagerProvider(Provider):
 
     @provide
     def discovery(self) -> Discovery:
-        return HueBeatSyncDiscovery()
+        return HueDiscovery()
 
 
 container = make_async_container(ManagerProvider())

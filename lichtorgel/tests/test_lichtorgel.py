@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from hue_beatsync import beatsync
-from hue_beatsync.audio.sounddevice import AudioDevice
-from hue_beatsync.beatsync import BeatSync
+from lichtorgel import lichtorgel
+from lichtorgel.audio.sounddevice import AudioDevice
+from lichtorgel.lichtorgel import Lichtorgel
 
 
 class Capture:
@@ -82,8 +82,8 @@ async def test_context_connects_capture_analysis_visual_and_stream(
 ):
     entertainment = Entertainment(area)
     hue = Hue(entertainment)
-    monkeypatch.setattr(beatsync, "Hueify", lambda: hue)
-    sync = BeatSync("Music", device=device, mode="spectrum", rate=40)
+    monkeypatch.setattr(lichtorgel, "Hueify", lambda: hue)
+    sync = Lichtorgel("Music", device=device, mode="spectrum", rate=40)
     capture = Capture()
     sync.capture = capture
 
@@ -108,8 +108,8 @@ async def test_context_rejects_an_area_owned_by_another_application(
     area = SimpleNamespace(name="Music", is_streaming=True)
     entertainment = Entertainment(area)
     hue = Hue(entertainment)
-    monkeypatch.setattr(beatsync, "Hueify", lambda: hue)
-    sync = BeatSync("Music", device=device)
+    monkeypatch.setattr(lichtorgel, "Hueify", lambda: hue)
+    sync = Lichtorgel("Music", device=device)
 
     with pytest.raises(RuntimeError, match="already streaming"):
         async with sync:
@@ -121,8 +121,8 @@ async def test_context_rejects_an_area_owned_by_another_application(
 
 async def test_run_propagates_capture_callback_failure(monkeypatch, device, area):
     entertainment = Entertainment(area)
-    monkeypatch.setattr(beatsync, "Hueify", lambda: Hue(entertainment))
-    sync = BeatSync("Music", device=device)
+    monkeypatch.setattr(lichtorgel, "Hueify", lambda: Hue(entertainment))
+    sync = Lichtorgel("Music", device=device)
     failure = ValueError("analysis failed")
     sync.capture = Capture(failure)
 
@@ -134,14 +134,14 @@ async def test_run_propagates_capture_callback_failure(monkeypatch, device, area
 
 
 async def test_run_rejects_negative_duration(device):
-    sync = BeatSync("Music", device=device)
+    sync = Lichtorgel("Music", device=device)
 
     with pytest.raises(ValueError, match="seconds"):
         await sync.run(-1)
 
 
 async def test_run_requires_open_context(device):
-    sync = BeatSync("Music", device=device)
+    sync = Lichtorgel("Music", device=device)
 
     with pytest.raises(RuntimeError, match="async with"):
         await sync.run()
@@ -149,4 +149,4 @@ async def test_run_requires_open_context(device):
 
 def test_area_name_must_not_be_empty(device):
     with pytest.raises(ValueError, match="area_name"):
-        BeatSync("  ", device=device)
+        Lichtorgel("  ", device=device)

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from hue_beatsync.analysis import AudioFeatures, SpectralAnalyzer, band_edges
+from lichtorgel.analysis import AudioFeatures, SpectralAnalyzer, band_edges
 
 
 def test_band_edges_are_logarithmic():

@@ -17,8 +17,8 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
 
 
 app = FastAPI(
-    title="hue-beatsync server",
-    description="Start and stop a Hue entertainment BeatSync stream.",
+    title="lichtorgel server",
+    description="Start and stop a Hue entertainment Lichtorgel stream.",
     lifespan=lifespan,
 )
 app.include_router(router)

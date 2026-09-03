@@ -6,7 +6,7 @@ from itertools import pairwise
 
 import numpy as np
 
-from hue_beatsync.smoothing import Envelope, PeakFollower
+from lichtorgel.smoothing import Envelope, PeakFollower
 
 BAND_NAMES = ("bass", "low mid", "mid", "high mid", "treble")
 

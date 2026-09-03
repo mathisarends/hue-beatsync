@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 import server.discovery as discovery_module
-from server.discovery import DiscoveryUnavailable, HueBeatSyncDiscovery
+from server.discovery import DiscoveryUnavailable, HueDiscovery
 
 
 @pytest.fixture(autouse=True)
@@ -27,7 +27,7 @@ def test_query_devices_returns_inputs_and_default_index(
         lambda: SimpleNamespace(index=3),
     )
 
-    result = HueBeatSyncDiscovery()._query_devices()
+    result = HueDiscovery()._query_devices()
 
     assert result == (devices, 3)
 
@@ -43,7 +43,7 @@ def test_query_devices_tolerates_a_missing_default(
     monkeypatch.setattr(discovery_module, "input_devices", lambda: devices)
     monkeypatch.setattr(discovery_module, "resolve_device", fail_to_resolve)
 
-    result = HueBeatSyncDiscovery()._query_devices()
+    result = HueDiscovery()._query_devices()
 
     assert result == (devices, None)
 
@@ -52,7 +52,7 @@ def test_query_devices_tolerates_a_missing_default(
 async def test_devices_map_backend_data_and_mark_the_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    discovery = HueBeatSyncDiscovery()
+    discovery = HueDiscovery()
     devices = [
         SimpleNamespace(
             index=3,
@@ -84,7 +84,7 @@ async def test_devices_map_backend_data_and_mark_the_default(
 async def test_devices_report_an_empty_backend_as_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    discovery = HueBeatSyncDiscovery()
+    discovery = HueDiscovery()
     monkeypatch.setattr(discovery, "_query_devices", lambda: ([], None))
 
     with pytest.raises(DiscoveryUnavailable, match="No audio input device found"):
@@ -95,7 +95,7 @@ async def test_devices_report_an_empty_backend_as_unavailable(
 async def test_device_backend_failures_are_normalized(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    discovery = HueBeatSyncDiscovery()
+    discovery = HueDiscovery()
 
     def fail() -> None:
         raise RuntimeError("PortAudio failed")
@@ -120,7 +120,7 @@ async def test_areas_map_bridge_data(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(discovery_module, "list_areas", list_fake_areas)
 
-    result = await HueBeatSyncDiscovery().areas()
+    result = await HueDiscovery().areas()
 
     assert result[0].model_dump() == {
         "id": "area-1",
@@ -140,4 +140,4 @@ async def test_area_backend_failures_are_normalized(
     monkeypatch.setattr(discovery_module, "list_areas", fail)
 
     with pytest.raises(DiscoveryUnavailable, match="bridge offline"):
-        await HueBeatSyncDiscovery().areas()
+        await HueDiscovery().areas()

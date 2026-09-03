@@ -5,7 +5,7 @@
 #   docker build -f server/Dockerfile .
 FROM python:3.13-slim
 
-# sounddevice (a hue-beatsync[sounddevice] dependency) loads PortAudio at
+# sounddevice (a lichtorgel[sounddevice] dependency) loads PortAudio at
 # import time via ctypes, so the shared library must be present.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libportaudio2 \
@@ -25,7 +25,7 @@ COPY pyproject.toml uv.lock ./
 COPY lichtorgel/ lichtorgel/
 COPY server/ server/
 
-RUN uv sync --frozen --no-dev --package hue-beatsync-server
+RUN uv sync --frozen --no-dev --package lichtorgel-server
 
 EXPOSE 8765
 
