@@ -25,14 +25,14 @@ class YmlDefaultsStore(DefaultsStore):
 
     def update(self, changes: SyncSettings) -> SyncSettings:
         self._defaults = SyncSettings.model_validate(
-            _provided(self._defaults) | _provided(changes)
+            _layer(_provided(self._defaults), _provided(changes))
         )
         self._save()
         return self._defaults
 
     def resolve(self, request: SyncSettings) -> ResolvedSettings:
         return ResolvedSettings.model_validate(
-            _provided(self._defaults) | _provided(request)
+            _layer(_provided(self._defaults), _provided(request))
         )
 
     def _load(self) -> SyncSettings:
@@ -49,5 +49,17 @@ class YmlDefaultsStore(DefaultsStore):
 
 def _provided(settings: SyncSettings) -> dict[str, Any]:
     """The fields a caller actually filled in. Every SyncSettings field
-    defaults to None, so dropping the Nones leaves exactly those."""
-    return settings.model_dump(exclude_none=True)
+    defaults to None, so dropping the Nones - and any group left empty by
+    that - leaves exactly those."""
+    data = settings.model_dump(exclude_none=True)
+    return {key: value for key, value in data.items() if value != {}}
+
+
+def _layer(base: dict[str, Any], top: dict[str, Any]) -> dict[str, Any]:
+    """Merge `top` over `base`, group by group. A plain `base | top` would
+    let a request that sets one field of a group drop the rest of it."""
+    merged = base | top
+    for key, value in top.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            merged[key] = _layer(base[key], value)
+    return merged

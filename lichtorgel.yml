@@ -1,8 +1,11 @@
-visual: pulse
-rate: 50
-sensitivity: 1.2
-gamma: 1.0
-floor: 0.18
-max_frequency: 14000.0
-exclusive: false
-gain: 1.0
+audio:
+  exclusive: false
+  gain: 1.0
+analysis:
+  sensitivity: 1.2
+  gamma: 1.0
+  floor: 0.18
+  max_frequency: 14000.0
+visual:
+  mode: pulse
+  rate: 50

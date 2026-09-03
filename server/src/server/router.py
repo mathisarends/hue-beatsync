@@ -51,15 +51,15 @@ async def start(
     try:
         await manager.start(
             resolved.area,
-            mode=resolved.visual,
-            device=resolved.device,
-            rate=resolved.rate,
-            sensitivity=resolved.sensitivity,
-            gamma=resolved.gamma,
-            floor=resolved.floor,
-            max_frequency=resolved.max_frequency,
-            exclusive=resolved.exclusive,
-            gain=resolved.gain,
+            mode=resolved.visual.mode,
+            rate=resolved.visual.rate,
+            device=resolved.audio.device,
+            exclusive=resolved.audio.exclusive,
+            gain=resolved.audio.gain,
+            sensitivity=resolved.analysis.sensitivity,
+            gamma=resolved.analysis.gamma,
+            floor=resolved.analysis.floor,
+            max_frequency=resolved.analysis.max_frequency,
         )
     except (SyncAlreadyRunning, ValueError, RuntimeError) as error:
         raise HTTPException(status_code=409, detail=str(error)) from error

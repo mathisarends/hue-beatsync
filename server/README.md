@@ -30,39 +30,44 @@ backend is unreachable.
 
 ## Defaults
 
-`POST /start` accepts every field optional. Any field you omit falls back to
-a configured default, then to a built-in default (`visual=pulse`, `rate=50`,
-`sensitivity=1.2`, `gamma=1.0`, `floor=0.18`, `max_frequency=14000`,
-`exclusive=false`, `gain=1.0`).
+Settings are grouped by what they affect: `audio` (where the sound comes from),
+`analysis` (how it is turned into levels), and `visual` (how those are painted
+onto the lights). `area` sits on its own at the top.
 
-Configure your own defaults (e.g. your usual area) with `PUT /defaults` —
-only the fields you pass are updated, everything else is left as-is:
+`POST /start` accepts every field optional. Any field you omit falls back to a
+configured default, then to the built-in default:
+
+```yaml
+audio:
+  exclusive: false
+  gain: 1.0
+analysis:
+  sensitivity: 1.2
+  gamma: 1.0
+  floor: 0.18
+  max_frequency: 14000.0
+visual:
+  mode: pulse
+  rate: 50
+```
+
+That is exactly the checked-in `lichtorgel.yml` in the repository root, which
+is where `PUT /defaults` persists your own defaults. `area` and `audio.device`
+have no built-in default and are omitted until you set them.
+
+Only the fields you pass are updated, group by group — everything else is left
+as-is:
 
 ```bash
 curl -X PUT localhost:8765/defaults -H 'content-type: application/json' \
-  -d '{"area": "Living Room", "sensitivity": 1.5}'
+  -d '{"area": "Living Room", "analysis": {"sensitivity": 1.5}}'
 curl localhost:8765/defaults
-curl -X POST localhost:8765/start -H 'content-type: application/json' -d '{}'
+curl -X POST localhost:8765/start -H 'content-type: application/json' \
+  -d '{"visual": {"mode": "sweep"}}'
 ```
 
-Defaults are persisted to `lichtorgel.yml` in the repository root. Only the keys
-you set are stored; everything else falls back to the built-in defaults in
-`ResolvedSettings`.
-
-The checked-in file holds the built-in defaults verbatim:
-
-```yaml
-visual: pulse
-rate: 50
-sensitivity: 1.2
-gamma: 1.0
-floor: 0.18
-max_frequency: 14000.0
-exclusive: false
-gain: 1.0
-```
-
-`area` and `device` have no default and are omitted until you set them.
+The second call keeps the stored area and sensitivity and only swaps the
+visual — setting one field of a group never clears the rest of it.
 
 ## Docker
 
