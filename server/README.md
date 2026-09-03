@@ -22,6 +22,13 @@ uv run --package hue-beatsync-server uvicorn server.main:app --port 8765
 ```
 
 `scripts\serve.cmd` is a double-clickable wrapper around the PowerShell one.
+From Git Bash, the PowerShell script needs its own interpreter:
+`powershell -ExecutionPolicy Bypass -File scripts/serve.ps1`.
+
+Stop the container first if it is up (`docker compose down`) - it publishes on
+`0.0.0.0:8765` and would otherwise keep the port, leaving the browser on the
+container's answer. Both scripts check the port and say so instead of failing
+on the bind.
 
 Run from a **WSL** shell, the server sees WSL's audio backend, not Windows'.
 WSLg bridges the Windows microphone in over PulseAudio, but the machine's

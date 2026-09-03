@@ -49,6 +49,29 @@ fi
 # prune everything outside this package - the dev tools included.
 uv sync --frozen --inexact --package hue-beatsync-server
 
+# Docker publishes on 0.0.0.0, so a running container holds this port and the
+# bind below fails with a message that does not say which process won it.
+busy=$(uv run --package hue-beatsync-server python - "$bind_host" "$port" <<'PYEOF'
+import socket
+import sys
+
+sock = socket.socket()
+try:
+    sock.bind((sys.argv[1], int(sys.argv[2])))
+except OSError:
+    print("busy")
+finally:
+    sock.close()
+PYEOF
+)
+if [ -n "$busy" ]; then
+    echo "serve.sh: $bind_host:$port is already in use." >&2
+    echo "  A running container publishes this port - stop it with:" >&2
+    echo "    docker compose down" >&2
+    echo "  Or pick another port: scripts/serve.sh -p 8766" >&2
+    exit 1
+fi
+
 echo "hue-beatsync server on http://$bind_host:$port (docs at /docs)"
 exec uv run --package hue-beatsync-server \
     uvicorn server.main:app --host "$bind_host" --port "$port" $reload
