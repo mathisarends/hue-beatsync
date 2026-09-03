@@ -8,3 +8,12 @@ services:
     volumes:
       - ./lichtorgel.yml:/app/lichtorgel.yml
     restart: unless-stopped
+    # The container has no sound hardware of its own, so /devices is empty and
+    # /start cannot capture anything. On a Linux host, uncomment both lines to
+    # hand the host's ALSA devices to the container. On Windows and macOS there
+    # is nothing to pass through - run the server natively instead
+    # (scripts/serve.ps1).
+    # devices:
+    #   - /dev/snd
+    # group_add:
+    #   - audio

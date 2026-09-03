@@ -9,6 +9,16 @@ UV workspace with two members:
   long-running `BeatSync` instance and exposes it as `start` / `stop` /
   `status` over HTTP.
 
+## Running the server
+
+```powershell
+.\scripts\serve.ps1
+```
+
+Serves on http://127.0.0.1:8765. Audio capture needs the host's sound stack, so
+on Windows run it this way rather than in Docker - see the
+[server README](server/README.md#audio-in-the-container).
+
 ## Development
 
 ```powershell

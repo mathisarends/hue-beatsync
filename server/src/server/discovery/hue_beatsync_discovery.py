@@ -17,6 +17,15 @@ class HueBeatSyncDiscovery(Discovery):
             devices, default = await asyncio.to_thread(self._query_devices)
         except RuntimeError as error:
             raise DiscoveryUnavailable(str(error)) from error
+        # PortAudio loads fine without any sound hardware behind it - the usual
+        # case is a container, where it reports ALSA with zero devices. An empty
+        # list would look like a valid answer, so report it as unavailable.
+        if not devices:
+            raise DiscoveryUnavailable(
+                "No audio input device found. The audio backend loaded but "
+                "reports no inputs, which is what a container without access to "
+                "the host sound hardware looks like - see the server README."
+            )
         return [
             _device(device, is_default=device.index == default) for device in devices
         ]
