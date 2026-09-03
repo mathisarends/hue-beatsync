@@ -66,8 +66,10 @@ PYEOF
 )
 if [ -n "$busy" ]; then
     echo "serve.sh: $bind_host:$port is already in use." >&2
-    echo "  A running container publishes this port - stop it with:" >&2
-    echo "    docker compose down" >&2
+    echo "  Usually the container (docker compose down) or an earlier server" >&2
+    echo "  that is still running. To see which process holds it:" >&2
+    echo "    powershell -c \"Get-Process -Id (Get-NetTCPConnection -LocalPort $port -State Listen).OwningProcess\"" >&2
+    echo "    lsof -i :$port                      # Linux, macOS" >&2
     echo "  Or pick another port: scripts/serve.sh -p 8766" >&2
     exit 1
 fi

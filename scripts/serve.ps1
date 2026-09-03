@@ -48,10 +48,15 @@ try {
         $probe.Stop()
     }
     catch {
+        $holder = try {
+            $owner = (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop)[0].OwningProcess
+            "  Held by: {0} (pid {1})`n" -f (Get-Process -Id $owner).ProcessName, $owner
+        }
+        catch { "" }
         Stop-WithMessage (
-            "${BindHost}:${Port} is already in use.`n" +
-            "  A running container publishes this port - stop it with:`n" +
-            "    docker compose down`n" +
+            "${BindHost}:${Port} is already in use.`n" + $holder +
+            "  Usually the container (docker compose down) or an earlier server`n" +
+            "  that is still running.`n" +
             "  Or pick another port: .\scripts\serve.ps1 -Port 8766"
         )
     }
