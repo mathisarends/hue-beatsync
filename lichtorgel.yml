@@ -1,4 +1,6 @@
+area: Zimmer
 audio:
+  device: 20
   exclusive: false
   gain: 1.0
 analysis:
