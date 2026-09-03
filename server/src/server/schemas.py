@@ -1,17 +1,20 @@
 from pydantic import BaseModel
 
 
-class StartRequest(BaseModel):
-    area: str
-    visual: str = "pulse"
+class SyncSettings(BaseModel):
+    """BeatSync stream settings. Any field left unset falls back to a
+    configured default (see /defaults), and then to the built-in default."""
+
+    area: str | None = None
+    visual: str | None = None
     device: int | str | None = None
-    rate: int = 50
-    sensitivity: float = 1.2
-    gamma: float = 1.0
-    floor: float = 0.18
-    max_frequency: float = 14_000.0
-    exclusive: bool = False
-    gain: float = 1.0
+    rate: int | None = None
+    sensitivity: float | None = None
+    gamma: float | None = None
+    floor: float | None = None
+    max_frequency: float | None = None
+    exclusive: bool | None = None
+    gain: float | None = None
 
 
 class StatusResponse(BaseModel):
