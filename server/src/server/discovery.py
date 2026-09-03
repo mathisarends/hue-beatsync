@@ -1,12 +1,22 @@
 import asyncio
+from typing import Protocol
 
 import httpx
 from hue_beatsync import AudioDevice, input_devices, resolve_device
 from hue_beatsync.areas import BeatSyncArea, list_areas
 from hueify.errors import HueifyError
 
-from server.discovery.base import Discovery, DiscoveryUnavailable
 from server.schemas import AreaInfo, AudioDeviceInfo
+
+
+class DiscoveryUnavailable(RuntimeError):
+    """The audio backend or Hue bridge could not be reached."""
+
+
+class Discovery(Protocol):
+    async def devices(self) -> list[AudioDeviceInfo]: ...
+
+    async def areas(self) -> list[AreaInfo]: ...
 
 
 class HueBeatSyncDiscovery(Discovery):

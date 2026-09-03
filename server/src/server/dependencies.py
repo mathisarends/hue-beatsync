@@ -2,7 +2,7 @@ from collections.abc import AsyncIterable
 
 from dishka import Provider, Scope, make_async_container, provide
 
-from server.configuration import DefaultsStore, YmlDefaultsStore
+from server.defaults import DefaultsStore, YmlDefaultsStore
 from server.discovery import Discovery, HueBeatSyncDiscovery
 from server.sync import BeatSyncManager, SyncManager
 

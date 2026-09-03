@@ -1,15 +1,21 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import yaml
 
-from server.configuration.base import DefaultsStore
 from server.schemas import ResolvedSettings, SyncSettings
 
-# yml_store.py lives at <repo>/server/src/server/configuration/, so the
-# repo root is five levels up.
-_REPO_ROOT = Path(__file__).resolve().parents[4]
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULTS_PATH = _REPO_ROOT / "lichtorgel.yml"
+
+
+class DefaultsStore(Protocol):
+    @property
+    def current(self) -> SyncSettings: ...
+
+    def update(self, changes: SyncSettings) -> SyncSettings: ...
+
+    def resolve(self, request: SyncSettings) -> ResolvedSettings: ...
 
 
 class YmlDefaultsStore(DefaultsStore):
@@ -48,16 +54,13 @@ class YmlDefaultsStore(DefaultsStore):
 
 
 def _provided(settings: SyncSettings) -> dict[str, Any]:
-    """The fields a caller actually filled in. Every SyncSettings field
-    defaults to None, so dropping the Nones - and any group left empty by
-    that - leaves exactly those."""
+    # Empty groups carry no override and would otherwise erase stored values.
     data = settings.model_dump(exclude_none=True)
     return {key: value for key, value in data.items() if value != {}}
 
 
 def _layer(base: dict[str, Any], top: dict[str, Any]) -> dict[str, Any]:
-    """Merge `top` over `base`, group by group. A plain `base | top` would
-    let a request that sets one field of a group drop the rest of it."""
+    # Merge groups recursively so a partial override keeps its sibling fields.
     merged = base | top
     for key, value in top.items():
         if isinstance(value, dict) and isinstance(base.get(key), dict):

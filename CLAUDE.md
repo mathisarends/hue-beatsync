@@ -29,8 +29,8 @@ In `__init__.py` files, always use relative imports, not absolute ones.
 
 ```python
 # yes
-from .base import Discovery, DiscoveryUnavailable
+from .sounddevice import SoundDeviceCapture
 
 # no
-from server.discovery.base import Discovery, DiscoveryUnavailable
+from hue_beatsync.audio.sounddevice import SoundDeviceCapture
 ```

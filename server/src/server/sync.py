@@ -1,8 +1,29 @@
 import asyncio
+from typing import Protocol
 
 from hue_beatsync import BeatSync
 
-from server.sync.base import SyncAlreadyRunning, SyncManager, SyncNotRunning
+from server.schemas import ResolvedSettings
+
+
+class SyncAlreadyRunning(RuntimeError):
+    pass
+
+
+class SyncNotRunning(RuntimeError):
+    pass
+
+
+class SyncManager(Protocol):
+    @property
+    def running(self) -> bool: ...
+
+    @property
+    def area(self) -> str | None: ...
+
+    async def start(self, settings: ResolvedSettings) -> None: ...
+
+    async def stop(self) -> None: ...
 
 
 class BeatSyncManager(SyncManager):
@@ -20,33 +41,22 @@ class BeatSyncManager(SyncManager):
     def area(self) -> str | None:
         return self._sync.area_name if self._sync else None
 
-    async def start(
-        self,
-        area: str,
-        *,
-        mode: str,
-        device: int | str | None,
-        rate: int,
-        sensitivity: float,
-        gamma: float,
-        floor: float,
-        max_frequency: float,
-        exclusive: bool,
-        gain: float,
-    ) -> None:
+    async def start(self, settings: ResolvedSettings) -> None:
         if self.running:
             raise SyncAlreadyRunning(f"already streaming to {self.area!r}")
+        if settings.area is None:
+            raise ValueError("area is required")
         sync = BeatSync(
-            area,
-            device=device,
-            mode=mode,
-            rate=rate,
-            sensitivity=sensitivity,
-            gamma=gamma,
-            floor=floor,
-            max_frequency=max_frequency,
-            exclusive=exclusive,
-            gain=gain,
+            settings.area,
+            device=settings.audio.device,
+            mode=settings.visual.mode,
+            rate=settings.visual.rate,
+            sensitivity=settings.analysis.sensitivity,
+            gamma=settings.analysis.gamma,
+            floor=settings.analysis.floor,
+            max_frequency=settings.analysis.max_frequency,
+            exclusive=settings.audio.exclusive,
+            gain=settings.audio.gain,
         )
         await sync.__aenter__()
         self._sync = sync
