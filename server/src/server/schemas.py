@@ -17,6 +17,22 @@ class SyncSettings(BaseModel):
     gain: float | None = None
 
 
+class ResolvedSettings(BaseModel):
+    """SyncSettings with every field except `area` filled in, i.e. the
+    result of layering a request over configured and built-in defaults."""
+
+    area: str | None = None
+    visual: str
+    device: int | str | None = None
+    rate: int
+    sensitivity: float
+    gamma: float
+    floor: float
+    max_frequency: float
+    exclusive: bool
+    gain: float
+
+
 class StatusResponse(BaseModel):
     running: bool
     area: str | None = None

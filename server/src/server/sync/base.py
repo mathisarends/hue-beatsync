@@ -21,7 +21,20 @@ class SyncManager(ABC):
     def area(self) -> str | None: ...
 
     @abstractmethod
-    async def start(self, area: str, **settings: object) -> None: ...
+    async def start(
+        self,
+        area: str,
+        *,
+        mode: str,
+        device: int | str | None,
+        rate: int,
+        sensitivity: float,
+        gamma: float,
+        floor: float,
+        max_frequency: float,
+        exclusive: bool,
+        gain: float,
+    ) -> None: ...
 
     @abstractmethod
     async def stop(self) -> None: ...

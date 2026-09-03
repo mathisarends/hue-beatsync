@@ -20,10 +20,34 @@ class BeatSyncManager(SyncManager):
     def area(self) -> str | None:
         return self._sync.area_name if self._sync else None
 
-    async def start(self, area: str, **settings: object) -> None:
+    async def start(
+        self,
+        area: str,
+        *,
+        mode: str,
+        device: int | str | None,
+        rate: int,
+        sensitivity: float,
+        gamma: float,
+        floor: float,
+        max_frequency: float,
+        exclusive: bool,
+        gain: float,
+    ) -> None:
         if self.running:
             raise SyncAlreadyRunning(f"already streaming to {self.area!r}")
-        sync = BeatSync(area, **settings)
+        sync = BeatSync(
+            area,
+            device=device,
+            mode=mode,
+            rate=rate,
+            sensitivity=sensitivity,
+            gamma=gamma,
+            floor=floor,
+            max_frequency=max_frequency,
+            exclusive=exclusive,
+            gain=gain,
+        )
         await sync.__aenter__()
         self._sync = sync
         self._task = asyncio.create_task(sync.run())

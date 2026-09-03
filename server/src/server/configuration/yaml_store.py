@@ -4,7 +4,7 @@ from typing import Any
 import yaml
 
 from server.configuration.base import DefaultsStore
-from server.schemas import SyncSettings
+from server.schemas import ResolvedSettings, SyncSettings
 
 _DEFAULTS_PATH = Path.home() / ".hue-beatsync" / "lichtorgel.yaml"
 
@@ -40,12 +40,13 @@ class YamlDefaultsStore(DefaultsStore):
         self._save()
         return self._defaults
 
-    def resolve(self, request: SyncSettings) -> dict[str, Any]:
-        return {
+    def resolve(self, request: SyncSettings) -> ResolvedSettings:
+        merged = {
             **_HARD_DEFAULTS,
             **self._defaults.model_dump(exclude_none=True),
             **request.model_dump(exclude_unset=True, exclude_none=True),
         }
+        return ResolvedSettings(**merged)
 
     def _load(self) -> SyncSettings:
         if not self._path.exists():

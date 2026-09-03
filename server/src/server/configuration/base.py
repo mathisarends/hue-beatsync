@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
-from server.schemas import SyncSettings
+from server.schemas import ResolvedSettings, SyncSettings
 
 
 class DefaultsStore(ABC):
@@ -20,4 +19,4 @@ class DefaultsStore(ABC):
     def update(self, changes: SyncSettings) -> SyncSettings: ...
 
     @abstractmethod
-    def resolve(self, request: SyncSettings) -> dict[str, Any]: ...
+    def resolve(self, request: SyncSettings) -> ResolvedSettings: ...
