@@ -28,7 +28,9 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 $repoRoot = Split-Path $PSScriptRoot -Parent
 Push-Location $repoRoot
 try {
-    uv sync --frozen --package hue-beatsync-server
+    # --inexact: the workspace shares one .venv, and a plain sync would
+    # prune everything outside this package - the dev tools included.
+    uv sync --frozen --inexact --package hue-beatsync-server
     if ($LASTEXITCODE -ne 0) { throw "uv sync failed with exit code $LASTEXITCODE." }
 
     $uvArgs = @(

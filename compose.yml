@@ -5,6 +5,11 @@ services:
       dockerfile: server/Dockerfile
     ports:
       - "8765:8765"
+    # Hue bridge credentials (HUE_BRIDGE_IP, HUE_APP_KEY, HUE_CLIENT_KEY).
+    # Environment beats the .env file in hueify's lookup order, so the values
+    # reach the container without baking .env into the image.
+    env_file:
+      - .env
     volumes:
       - ./lichtorgel.yml:/app/lichtorgel.yml
     restart: unless-stopped

@@ -8,15 +8,28 @@ anything else) can drive it without holding the process itself.
 uv run --package hue-beatsync-server uvicorn server.main:app --port 8765
 ```
 
-On Windows, `scripts\serve.ps1` does the same with the dependencies synced
-first:
+`scripts/serve.sh` (Git Bash, WSL, Linux) and `scripts\serve.ps1`
+(PowerShell) do the same with the dependencies synced first:
+
+```bash
+./scripts/serve.sh                 # http://127.0.0.1:8765
+./scripts/serve.sh -p 9000 -r
+```
 
 ```powershell
-.\scripts\serve.ps1              # http://127.0.0.1:8765
+.\scripts\serve.ps1
 .\scripts\serve.ps1 -Port 9000 -Reload
 ```
 
-`scripts\serve.cmd` is a double-clickable wrapper around it.
+`scripts\serve.cmd` is a double-clickable wrapper around the PowerShell one.
+
+Run from a **WSL** shell, the server sees WSL's audio backend, not Windows'.
+WSLg bridges the Windows microphone in over PulseAudio, but the machine's
+playback - what you actually want the lights to follow - is not among the
+inputs, because that needs WASAPI loopback. For that, start the server from
+Windows itself. `serve.sh` keeps the WSL environment in `.venv-wsl` so a
+checkout on `/mnt/c` can be used from both sides without the two overwriting
+each other.
 
 ## Discovery
 
@@ -90,6 +103,22 @@ on the `lichtorgel/` workspace member) and serves on `localhost:8765`. The
 repo-root `lichtorgel.yml` is bind-mounted into the container, so defaults
 you set via `PUT /defaults` persist back to that file on the host.
 
+### Bridge credentials
+
+The container needs the same Hue credentials as a native run. Copy
+`.env.example` to `.env` in the repo root and fill it in:
+
+```
+HUE_BRIDGE_IP=192.168.1.42
+HUE_APP_KEY=...
+HUE_CLIENT_KEY=...
+```
+
+`compose.yml` passes that file to the container via `env_file`, which
+lands the values in the container's environment - hueify reads environment
+variables before any `.env` file, so nothing needs to be mounted or copied into
+the image (`.env` is in `.dockerignore`).
+
 ### Audio in the container
 
 The image ships PortAudio, but a container has no sound hardware of its own.
@@ -97,7 +126,7 @@ Without one, PortAudio comes up reporting ALSA with zero devices: `/devices`
 answers `503` and `/start` has nothing to capture.
 
 On a **Linux host**, hand the host's sound devices to the container by
-uncommenting the `devices:` and `group_add:` lines in `docker-compose.yml`.
+uncommenting the `devices:` and `group_add:` lines in `compose.yml`.
 
 On **Windows and macOS** there is nothing to pass through. Docker runs Linux
 containers inside a VM that has no `/dev/snd` and no audio backend, so no bind

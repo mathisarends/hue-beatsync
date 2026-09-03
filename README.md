@@ -11,8 +11,8 @@ UV workspace with two members:
 
 ## Running the server
 
-```powershell
-.\scripts\serve.ps1
+```bash
+./scripts/serve.sh      # or: .\scripts\serve.ps1
 ```
 
 Serves on http://127.0.0.1:8765. Audio capture needs the host's sound stack, so

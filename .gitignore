@@ -82,3 +82,5 @@ desktop.ini
 *.wav
 *.mp3
 recordings/
+
+.venv-wsl/
