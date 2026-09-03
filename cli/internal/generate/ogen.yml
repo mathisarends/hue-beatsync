@@ -1,0 +1,7 @@
+generator:
+  features:
+    disable:
+      - paths/server
+      - ogen/otel
+  ignore_not_implemented:
+    - object defaults
