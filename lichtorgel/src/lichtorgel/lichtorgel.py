@@ -12,6 +12,7 @@ from lichtorgel.audio.sounddevice import (
     SoundDeviceCapture,
     resolve_device,
 )
+from lichtorgel.timing import fine_timer
 from lichtorgel.visuals import Visual, channel_positions, create_visual
 
 _DEFAULT_MODE = "pulse"
@@ -69,6 +70,7 @@ class Lichtorgel:
 
         stack = AsyncExitStack()
         try:
+            stack.enter_context(fine_timer())
             hue = await stack.enter_async_context(Hueify())
             area = await hue.entertainment.find_by_name(self.area_name)
             if area.is_streaming:

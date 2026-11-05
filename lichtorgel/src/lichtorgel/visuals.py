@@ -18,10 +18,16 @@ _DEFAULT_FLOOR = 0.18
 
 _CALM_ENVELOPE = (0.12, 0.9)
 _PUNCHY_ENVELOPE = (0.045, 0.35)
-_FLASH_ENVELOPE = (0.025, 0.22)
-_FLASH_GAIN = 0.6
+_FLASH_RELEASE = 0.22
+_FLASH_GAIN = 0.85
+
+_FULL_PUNCH_AT = 0.6
+_PUNCH_STRETCH = 2.5
+_PUNCH_SUSTAIN = 0.3
+_PUNCH_FLOOR_DIP = 0.7
 
 _HUE_TURNS_PER_SECOND = 0.35
+_HUE_SNAP_PERCUSSIVENESS = 0.4
 
 _PRESENCE_FADE = (0.15, 1.2)
 _IDLE_PRESENCE = 0.65
@@ -72,7 +78,7 @@ class Visual:
     ) -> None:
         raise NotImplementedError
 
-    def _shape(self, level: float) -> float:
+    def _shape(self, level: float, punch: float = 0.0) -> float:
         """Map a 0 to 1 drive onto the part of a lamp's range that is visible.
 
         A Hue lamp stops being interesting well before zero, so a quiet passage
@@ -80,9 +86,13 @@ class Visual:
         above a floor keeps it visible. The floor rides along with the presence
         envelope. Silence settles at a reduced presence instead of making a
         quiet bridge look as if the entertainment stream stopped.
+
+        Punch lowers the floor again: a hit only reads as one when the room goes
+        dark between hits, and the hits keep it from looking off.
         """
         shaped = min(max(level, 0.0), 1.0) ** self._gamma
-        return (self._floor + (1.0 - self._floor) * shaped) * self._presence.value
+        floor = self._floor * (1.0 - _PUNCH_FLOOR_DIP * punch)
+        return (floor + (1.0 - floor) * shaped) * self._presence.value
 
 
 class Spectrum(Visual):
@@ -116,9 +126,10 @@ class Spectrum(Visual):
             hue = _mix(_BAND_HUES[lower], _BAND_HUES[upper], blend)
             envelope = self._envelopes[channel]
             _tune(envelope, features.percussiveness)
-            frame.set(
-                channel, _hsv(hue), self._shape(envelope.update(level, tick.delta))
+            brightness = self._shape(
+                envelope.update(level, tick.delta), _punch(features.percussiveness)
             )
+            frame.set(channel, _hsv(hue), brightness_fraction=brightness)
 
 
 class Pulse(Visual):
@@ -133,7 +144,7 @@ class Pulse(Visual):
     ) -> None:
         super().__init__(positions, analyzer, gamma, floor)
         self._brightness = Envelope(*_CALM_ENVELOPE)
-        self._flash = Envelope(*_FLASH_ENVELOPE)
+        self._flash = Envelope(attack=0.0, release=_FLASH_RELEASE)
         self._spacing = _BeatSpacing()
         self._hue = _HueDrift()
 
@@ -141,29 +152,49 @@ class Pulse(Visual):
         self, frame: Frame, tick: Tick, features: AudioFeatures, beats: int
     ) -> None:
         self._spacing.advance(tick.delta)
-        flash_target = 0.0
+        # The lamps smooth every change on their own, and the bridge already
+        # lags the music. A flash therefore lands at full strength in the frame
+        # its beat arrives in, and only its decay is smoothed here.
+        self._flash.update(0.0, tick.delta)
+        punch = _punch(features.percussiveness)
         if beats:
-            self._hue.turn(_GOLDEN_ANGLE)
-            flash_target = (
-                (0.5 + 0.5 * features.beat_strength)
-                * features.percussiveness
-                * self._spacing.take()
+            self._change_hue(features.percussiveness)
+            self._flash.hit(
+                (0.5 + 0.5 * features.beat_strength) * punch * self._spacing.take()
             )
+        flash = self._flash.value
 
         _tune(self._brightness, features.percussiveness)
         bass = max(features.level("bass"), features.level("low mid") * 0.6)
-        level = self._brightness.update(bass, tick.delta)
-        flash = self._flash.update(flash_target, tick.delta)
+        stretch = _mix(1.0, _PUNCH_STRETCH, punch)
+        level = self._brightness.update(_stretch(bass, stretch), tick.delta)
 
-        # Percussive material needs headroom above the sustained level for the
-        # flash to land in; without beats that headroom is only lost brightness.
-        sustain = _mix(0.95, 0.7, features.percussiveness)
-        brightness = self._shape(min(level * sustain + flash * _FLASH_GAIN, 1.0))
+        # With a beat to follow, the flash carries the kick and the sustained
+        # level steps back, since a bassline keeps it up between kicks. Without
+        # a beat, that sustained level is the whole show.
+        sustain = _mix(0.95, _PUNCH_SUSTAIN, punch)
+        brightness = self._shape(min(level * sustain + flash * _FLASH_GAIN, 1.0), punch)
 
         hue = self._hue.advance(tick.delta)
         saturation = 1.0 - 0.25 * features.centroid
         for channel, x in self._positions.items():
-            frame.set(channel, _hsv(hue + x * 0.05, saturation), brightness)
+            frame.set(
+                channel,
+                _hsv(hue + x * 0.05, saturation),
+                brightness_fraction=brightness,
+            )
+
+    def _change_hue(self, percussiveness: float) -> None:
+        """Cut to the next color on a beat that hits, glide to it otherwise.
+
+        A cut that lands with the flash reads as the beat changing the room. A
+        glide lags the beat by most of a second, which only suits material that
+        has no hit to land on.
+        """
+        if percussiveness >= _HUE_SNAP_PERCUSSIVENESS:
+            self._hue.jump(_GOLDEN_ANGLE)
+        else:
+            self._hue.turn(_GOLDEN_ANGLE)
 
 
 class Sweep(Visual):
@@ -220,7 +251,9 @@ class Sweep(Visual):
                 if contribution > level:
                     hue, level = wave.hue, contribution
             frame.set(
-                channel, _hsv(hue, 1.0 - 0.2 * features.centroid), self._shape(level)
+                channel,
+                _hsv(hue, 1.0 - 0.2 * features.centroid),
+                brightness_fraction=self._shape(level, _punch(features.percussiveness)),
             )
 
     def _advance(self, delta: float) -> None:
@@ -311,6 +344,10 @@ class _HueDrift:
         self.target = (self.target + amount) % 1.0
         return True
 
+    def jump(self, amount: float) -> None:
+        self.target = (self.target + amount) % 1.0
+        self.value = self.target
+
     def advance(self, delta: float) -> float:
         distance = (self.target - self.value + 0.5) % 1.0 - 0.5
         step = self._rate * delta
@@ -337,6 +374,27 @@ def _tune(envelope: Envelope, percussiveness: float) -> None:
 def _hsv(hue: float, saturation: float = 1.0, value: float = 1.0) -> RGB:
     red, green, blue = colorsys.hsv_to_rgb(hue % 1.0, saturation, value)
     return (round(red * 255), round(green * 255), round(blue * 255))
+
+
+def _punch(percussiveness: float) -> float:
+    """How hard to hit, from 0 for ambient material to 1 for a steady beat.
+
+    Even a plain four-on-the-floor kick measures only around 0.55 percussive,
+    so the full club look is reached there rather than at a value real music
+    seldom gets to.
+    """
+    return min(percussiveness / _FULL_PUNCH_AT, 1.0)
+
+
+def _stretch(level: float, factor: float) -> float:
+    """Spend the lamp's range on only the loudest part of a level.
+
+    Levels span a 42 dB window, which keeps quiet music visible but flattens a
+    pump: a kick 6 dB above the bars between moves its level by a seventh.
+    Stretching by 2.5 maps only the top 17 dB onto the lamp, so the same kick
+    moves it by a third.
+    """
+    return max(1.0 - (1.0 - level) * factor, 0.0)
 
 
 def _mix(first: float, second: float, blend: float) -> float:

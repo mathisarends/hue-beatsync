@@ -430,17 +430,13 @@ wheels = [
 
 [[package]]
 name = "hueify"
-version = "0.9.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.8.1"
+source = { git = "https://github.com/mathisarends/hueify?rev=9f5c060c0db9d56a778589cfb70a97b285b2d4c4#9f5c060c0db9d56a778589cfb70a97b285b2d4c4" }
 dependencies = [
     { name = "httpx", extra = ["http2"] },
     { name = "httpx-sse" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/0e/b66673f9676219d50e3359c8d5ed82f58779d574b3a9c4697663d5120abc/hueify-0.9.0.tar.gz", hash = "sha256:54db2f6f9f01097d47d5256ceee9c1c1216d0ddfce39fd940d8faed2dbd1d875", size = 1732438, upload-time = "2026-08-08T06:20:05.206Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/ac/5912e522c550ce499071dd335a9735f9c59a2f6205c7d016adce287cbebb/hueify-0.9.0-py3-none-any.whl", hash = "sha256:13c08862e18d7d3158529ee03b11d13bb4a07163d8f53e75557f56e5c920c2ec", size = 57126, upload-time = "2026-08-08T06:20:03.115Z" },
 ]
 
 [package.optional-dependencies]
@@ -500,7 +496,7 @@ sounddevice = [
 
 [package.metadata]
 requires-dist = [
-    { name = "hueify", extras = ["entertainment"], specifier = ">=0.9.0" },
+    { name = "hueify", extras = ["entertainment"], git = "https://github.com/mathisarends/hueify?rev=9f5c060c0db9d56a778589cfb70a97b285b2d4c4" },
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "sounddevice", marker = "extra == 'sounddevice'", specifier = ">=0.5.2" },
 ]

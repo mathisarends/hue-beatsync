@@ -7,6 +7,7 @@ from dishka import Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from hueify.errors import AmbiguousResourceError
 
 from server.defaults import DefaultsStore
 from server.discovery import Discovery, DiscoveryUnavailable
@@ -177,6 +178,7 @@ def test_start_requires_an_area(api: Api) -> None:
         SyncAlreadyRunning("already running"),
         ValueError("invalid mode"),
         RuntimeError("bridge rejected stream"),
+        AmbiguousResourceError("two areas are named 'Zimmer'"),
     ],
 )
 def test_start_maps_runtime_failures_to_conflict(api: Api, error: Exception) -> None:

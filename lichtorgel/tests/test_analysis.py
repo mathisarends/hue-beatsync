@@ -146,6 +146,24 @@ def test_a_backbeat_of_claps_produces_beats_without_any_kick():
     assert features.bpm is not None
 
 
+def test_the_first_kick_of_a_drop_already_counts_as_a_beat():
+    """A breakdown must not cost the drop its first bar of beats."""
+    rate, block = 48_000, 512
+    breakdown_ends = 16.0
+    samples = np.concatenate(
+        (_beats(rate, 8.0), _pad(rate, 8.0, seed=1), _beats(rate, 6.0, seed=2))
+    )
+    first_kick = int((breakdown_ends + 0.4) * rate)
+    analyzer = SpectralAnalyzer(rate)
+
+    _feed(analyzer, samples[:first_kick], rate)
+    before = analyzer.features.beats
+    _feed(analyzer, samples[first_kick : first_kick + 4 * block], rate)
+
+    assert analyzer.features.beats == before + 1
+    assert analyzer.features.percussiveness >= 0.45
+
+
 def test_fast_hi_hats_do_not_drive_the_room_at_their_own_rate():
     """Sixteenths at 480 onsets per minute must not become 480 light changes."""
     rate = 48_000

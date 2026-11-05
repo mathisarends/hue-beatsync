@@ -24,10 +24,16 @@ closes the Hue client, entertainment stream, and audio capture inside its
 context manager.
 
 Two settings decide how the room reads. `floor` is the brightness the lamps
-never fall below while anything is playing, so a quiet passage stays visible
-instead of reading as off; silence settles into a still dimmer glow. `gamma`
-above 1 restores contrast if the result looks too flat. Beat flashes stay in
-sync, while color transitions finish before another beat can choose a new hue.
+never fall below while ambient material is playing, so a quiet passage stays
+visible instead of reading as off; silence settles into a still dimmer glow.
+`gamma` above 1 restores contrast if the result looks too flat.
+
+How hard the lights hit follows how percussive the music is. On a steady beat
+the floor drops, the room goes dark between kicks, each flash lands at full
+strength in the frame its beat arrives in, and the color cuts with it. On
+ambient material the lights glide between colors and none of that applies.
+On Windows the stream also asks for a 1 ms system timer while it runs, so
+frames leave on time instead of up to 17 ms late.
 
 Audio capture, spectral analysis and visual rendering remain independently
 available for applications that need lower-level control.

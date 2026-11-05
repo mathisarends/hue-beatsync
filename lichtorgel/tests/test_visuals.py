@@ -1,7 +1,8 @@
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
+from hueify.entertainment import Frame
 
 from lichtorgel.analysis import AudioFeatures, SpectralAnalyzer
 from lichtorgel.visuals import (
@@ -52,15 +53,20 @@ def features(**overrides):
 
 
 def run(visual, analyzer, snapshot, seconds=1.0, delta=0.02):
-    frame = Mock()
+    frame = fake_frame()
     analyzer._features = snapshot
     for _ in range(round(seconds / delta)):
         visual.render(frame, SimpleNamespace(delta=delta))
     return frame
 
 
+def fake_frame():
+    # Spec'd against the real Frame, so a call hueify no longer accepts fails here.
+    return create_autospec(Frame, instance=True)
+
+
 def brightnesses(frame):
-    return [call.args[2] for call in frame.set.call_args_list]
+    return [call.kwargs["brightness_fraction"] for call in frame.set.call_args_list]
 
 
 def colors(frame):
@@ -71,7 +77,7 @@ def colors(frame):
 def test_visual_renders_each_channel(name, analyzer):
     visual = create_visual(name, {1: -1.0, 2: 1.0}, analyzer)
     analyzer._features = features()
-    frame = Mock()
+    frame = fake_frame()
 
     visual.render(frame, SimpleNamespace(delta=0.02))
 
@@ -82,7 +88,7 @@ def test_visual_renders_each_channel(name, analyzer):
 def test_quiet_audio_still_reaches_the_visible_range(name, analyzer):
     visual = create_visual(name, {1: 0.0}, analyzer, floor=0.2)
 
-    quiet = features(levels=(0.02,) * 5, energy=0.02)
+    quiet = features(levels=(0.02,) * 5, energy=0.02, percussiveness=0.0)
 
     frame = run(visual, analyzer, quiet, seconds=2.0)
 
@@ -93,18 +99,18 @@ def test_quiet_audio_still_reaches_the_visible_range(name, analyzer):
 def test_silence_settles_to_a_dim_visible_glow(name, analyzer):
     visual = create_visual(name, {1: 0.0}, analyzer, floor=0.2)
     run(visual, analyzer, features())
-    silent = features(levels=(0.0,) * 5, energy=0.0, silent=True)
+    silent = features(levels=(0.0,) * 5, energy=0.0, silent=True, percussiveness=0.0)
 
     frame = run(visual, analyzer, silent, seconds=8.0)
 
     assert 0.1 < brightnesses(frame)[-1] < 0.15
 
 
-def test_pulse_eases_between_hues_instead_of_jumping(analyzer):
+def test_pulse_eases_between_hues_on_calm_material(analyzer):
     visual = create_visual("pulse", {1: 0.0}, analyzer)
-    run(visual, analyzer, features(beats=1), seconds=0.02)
+    run(visual, analyzer, features(beats=1, percussiveness=0.2), seconds=0.02)
 
-    frame = run(visual, analyzer, features(beats=2), seconds=0.06)
+    frame = run(visual, analyzer, features(beats=2, percussiveness=0.2), seconds=0.06)
 
     steps = colors(frame)
     assert len(set(steps)) > 1
@@ -113,16 +119,16 @@ def test_pulse_eases_between_hues_instead_of_jumping(analyzer):
 
 def test_fast_beats_do_not_retarget_an_unfinished_hue_transition(analyzer):
     visual = create_visual("pulse", {1: 0.0}, analyzer)
-    run(visual, analyzer, features(beats=1), seconds=0.02)
+    run(visual, analyzer, features(beats=1, percussiveness=0.2), seconds=0.02)
     target = visual._hue.target
 
     for beat in range(2, 8):
-        run(visual, analyzer, features(beats=beat), seconds=0.1)
+        run(visual, analyzer, features(beats=beat, percussiveness=0.2), seconds=0.1)
 
     assert visual._hue.target == target
 
 
-def test_pulse_keeps_a_beat_flash_snappy_without_an_instant_jump(analyzer):
+def test_pulse_flashes_at_full_strength_in_the_beat_frame(analyzer):
     visual = create_visual("pulse", {1: 0.0}, analyzer, floor=0.0)
     quiet = features(levels=(0.0,) * 5, energy=0.0, beats=0)
     run(visual, analyzer, quiet, seconds=1.0)
@@ -136,7 +142,47 @@ def test_pulse_keeps_a_beat_flash_snappy_without_an_instant_jump(analyzer):
     )
     frame = run(visual, analyzer, beat, seconds=0.02)
 
-    assert 0.25 < brightnesses(frame)[0] < 0.4
+    assert brightnesses(frame)[0] == pytest.approx(0.85, abs=0.01)
+
+
+def test_pulse_cuts_to_the_next_hue_on_a_beat_that_hits(analyzer):
+    visual = create_visual("pulse", {1: 0.0}, analyzer)
+    run(visual, analyzer, features(beats=1), seconds=0.02)
+
+    frame = run(visual, analyzer, features(beats=2), seconds=0.06)
+
+    steps = colors(frame)
+    assert steps[0] == steps[-1]
+    assert visual._hue.value == visual._hue.target
+
+
+@pytest.mark.parametrize("name", visual_names())
+def test_percussive_material_goes_darker_between_hits_than_ambient(name, analyzer):
+    def resting_brightness(percussiveness):
+        visual = create_visual(name, {1: 0.0}, analyzer, floor=0.2)
+        between_hits = features(
+            levels=(0.0,) * 5, energy=0.0, beats=0, percussiveness=percussiveness
+        )
+        return brightnesses(run(visual, analyzer, between_hits, seconds=2.0))[-1]
+
+    assert resting_brightness(0.9) < resting_brightness(0.0) * 0.5
+
+
+def test_pulse_pumps_a_steady_kick_against_a_sustained_bassline(analyzer):
+    """The bassline keeps the bass band full; the kick still has to show."""
+    visual = create_visual("pulse", {1: 0.0}, analyzer, floor=0.18)
+    bassline = (0.4, 1.0, 0.5, 0.3, 0.2)
+    measured = []
+    for beat in range(1, 9):
+        frame = run(
+            visual,
+            analyzer,
+            features(levels=bassline, beats=beat, percussiveness=0.55),
+            seconds=0.5,
+        )
+        measured = brightnesses(frame)
+
+    assert max(measured) > 4 * min(measured)
 
 
 def test_crowded_beats_flash_weaker_than_spaced_ones(analyzer):
@@ -158,8 +204,8 @@ def test_crowded_beats_flash_weaker_than_spaced_ones(analyzer):
                 visual.render(frame, SimpleNamespace(delta=0.02))
 
         for _ in range(5):
-            cycle(Mock())
-        measured = Mock()
+            cycle(fake_frame())
+        measured = fake_frame()
         cycle(measured)
         return max(brightnesses(measured))
 

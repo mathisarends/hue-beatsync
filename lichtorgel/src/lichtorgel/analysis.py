@@ -58,7 +58,10 @@ _MIN_DRUM_PROMINENCE = 3.65
 _FLUX_MARGIN = 0.4
 _CREST_RANGE = (0.85, 1.60)
 _MIN_PERCUSSIVENESS = 0.15
-_PERCUSSIVENESS_SETTLING = 1.5
+_DECISIVE_ONSET = 3.0
+_DECISIVE_PERCUSSIVENESS = 0.5
+_PERCUSSIVENESS_ATTACK = 0.25
+_PERCUSSIVENESS_RELEASE = 3.0
 _TEMPO_RANGE = (0.25, 1.2)
 
 _SILENCE_RMS = 8e-4
@@ -258,9 +261,9 @@ class _OnsetDetector:
         self._previous = np.zeros(_ONSET_BANDS, dtype=np.float32)
         self._history: deque[float] = deque(maxlen=_FLUX_HISTORY)
         self._beat_times: deque[float] = deque(maxlen=12)
-        self._percussiveness = Envelope(
-            _PERCUSSIVENESS_SETTLING, _PERCUSSIVENESS_SETTLING
-        )
+        # Quick to rise, so the first kicks of a drop already hit, and slow to
+        # fall, so a fill or a bar without drums does not calm the room down.
+        self._percussiveness = Envelope(_PERCUSSIVENESS_ATTACK, _PERCUSSIVENESS_RELEASE)
         self._last_beat = -math.inf
         self._beats = 0
 
@@ -288,13 +291,18 @@ class _OnsetDetector:
         percussiveness = self._percussiveness.update(
             _crest_to_percussiveness(deviation, mean), delta
         )
-        if percussiveness < _MIN_PERCUSSIVENESS:
-            return 0.0
-
         threshold = max(
             mean + self._sensitivity * deviation, mean * (1.0 + _FLUX_MARGIN)
         )
         if flux <= threshold or elapsed - self._last_beat < _MIN_BEAT_GAP:
+            return 0.0
+
+        # The crest needs a few hits in its history before it believes in a
+        # beat, which would swallow the first bar of a drop after a breakdown.
+        # A hit that clears the threshold this far is evidence on its own.
+        if flux >= threshold * _DECISIVE_ONSET:
+            self._percussiveness.hit(_DECISIVE_PERCUSSIVENESS)
+        elif percussiveness < _MIN_PERCUSSIVENESS:
             return 0.0
 
         self._last_beat = elapsed

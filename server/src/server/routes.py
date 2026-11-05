@@ -1,5 +1,6 @@
 from dishka.integrations.fastapi import DishkaRoute, FromDishka
 from fastapi import APIRouter, HTTPException
+from hueify.errors import HueifyError
 
 from server.defaults import DefaultsStore
 from server.discovery import Discovery, DiscoveryUnavailable
@@ -50,7 +51,7 @@ async def start(
         )
     try:
         await manager.start(resolved)
-    except (SyncAlreadyRunning, ValueError, RuntimeError) as error:
+    except (SyncAlreadyRunning, ValueError, RuntimeError, HueifyError) as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return StatusResponse(running=manager.running, area=manager.area)
 

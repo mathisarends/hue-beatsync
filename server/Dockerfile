@@ -6,8 +6,11 @@
 FROM python:3.13-slim
 
 # sounddevice (a lichtorgel[sounddevice] dependency) loads PortAudio at
-# import time via ctypes, so the shared library must be present.
+# import time via ctypes, so the shared library must be present. git is for
+# uv to fetch hueify, which lichtorgel pins to a commit rather than a release.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
     libportaudio2 \
     && rm -rf /var/lib/apt/lists/*
 

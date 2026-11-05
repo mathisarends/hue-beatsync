@@ -5,12 +5,18 @@ description = "Drive Philips Hue entertainment lights from live audio"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "hueify[entertainment]>=0.9.0",
+    "hueify[entertainment]",
     "numpy>=2.5.1",
 ]
 
 [project.optional-dependencies]
 sounddevice = ["sounddevice>=0.5.2"]
+
+# Pinned to an unreleased hueify commit for its hardened entertainment stream.
+# That commit still reports version 0.8.1, so the pin is the commit, not a
+# version range. Move back to a PyPI release once hueify publishes one.
+[tool.uv.sources]
+hueify = { git = "https://github.com/mathisarends/hueify", rev = "9f5c060c0db9d56a778589cfb70a97b285b2d4c4" }
 
 [build-system]
 requires = ["hatchling"]
