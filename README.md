@@ -32,7 +32,7 @@ Run it with `--help` for every option.
 ## Development
 
 ```powershell
-uv sync --dev --extra sounddevice
+uv sync --dev --all-packages --all-extras
 uv run ruff check .
 uv run ruff format --check .
 uv run --package lichtorgel pytest

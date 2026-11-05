@@ -23,8 +23,14 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
+      # sounddevice loads PortAudio when it is imported.
+      - name: Install PortAudio
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2
+
+      # Without --all-packages, uv installs only the workspace root, which has
+      # no code of its own, and neither lichtorgel nor server is importable.
       - name: Install dependencies
-        run: uv sync --all-extras --dev --python ${{ matrix.python-version }}
+        run: uv sync --all-packages --all-extras --dev --python ${{ matrix.python-version }}
 
       - name: Lint
         run: uv run ruff check .

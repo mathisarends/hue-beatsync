@@ -91,7 +91,7 @@ Available visual names are returned by `visual_names()`. Construct them through
 ## Development
 
 ```powershell
-uv sync --dev --extra sounddevice
+uv sync --dev --all-packages --all-extras
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest
