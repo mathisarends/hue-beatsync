@@ -66,6 +66,6 @@ jobs:
       - name: Check the API client is up to date
         run: |
           uv sync --all-extras --dev
-          uv run --package hue-beatsync-server python scripts/export_openapi.py
+          uv run --package lichtorgel-server python scripts/export_openapi.py
           (cd cli && go generate ./...)
           git diff --exit-code -- specs/openapi.json cli/internal/client
