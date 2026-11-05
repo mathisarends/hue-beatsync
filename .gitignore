@@ -84,6 +84,3 @@ desktop.ini
 recordings/
 
 .venv-wsl/
-
-# --- Go CLI ---
-cli/bin/

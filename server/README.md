@@ -1,8 +1,8 @@
 # lichtorgel-server
 
 Minimal FastAPI server that owns a single long-running `Lichtorgel` instance
-and exposes it as `start` / `stop` / `status` over HTTP, so the CLI (or
-anything else) can drive it without holding the process itself.
+and exposes it as `start` / `stop` / `status` over HTTP, so any HTTP
+client can drive it without holding the process itself.
 
 ```bash
 uv run --package lichtorgel-server uvicorn server.main:app --port 8765

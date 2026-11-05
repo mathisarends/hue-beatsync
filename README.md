@@ -9,9 +9,6 @@ UV workspace with two members:
   long-running `Lichtorgel` instance and exposes it as `start` / `stop` /
   `status` over HTTP.
 
-Plus [`cli/`](docs/cli.md), a Go binary that drives that server from the
-terminal.
-
 ## Running the server
 
 ```bash
@@ -22,18 +19,15 @@ Serves on http://127.0.0.1:8765. Audio capture needs the host's sound stack, so
 on Windows run it this way rather than in Docker - see the
 [server README](server/README.md#audio-in-the-container).
 
-## Using the CLI
+## Running the lights directly
 
-```bash
-cd cli && go build -o bin/lichtorgel ./cmd/lichtorgel
+Without the server, the example script streams straight from an audio input:
 
-./bin/lichtorgel setup     # pick an area and an audio input, save both
-./bin/lichtorgel doctor
-./bin/lichtorgel start
+```powershell
+uv run python -m examples.stream_lights --area "Zimmer" --lead 0.1
 ```
 
-Every command also speaks JSON (`--json`, `--fields`), so agents and scripts get
-the same surface a person does. See [`docs/cli.md`](docs/cli.md).
+Run it with `--help` for every option.
 
 ## Development
 
