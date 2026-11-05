@@ -18,7 +18,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Pass `device`, `mode`, `rate`, `sensitivity`, `gamma`, `floor`, or
+Pass `device`, `mode`, `rate`, `sensitivity`, `gamma`, `floor`, `lead`, or
 `max_frequency` only when their defaults need changing. `Lichtorgel` creates and
 closes the Hue client, entertainment stream, and audio capture inside its
 context manager.
@@ -34,6 +34,18 @@ strength in the frame its beat arrives in, and the color cuts with it. On
 ambient material the lights glide between colors and none of that applies.
 On Windows the stream also asks for a 1 ms system timer while it runs, so
 frames leave on time instead of up to 17 ms late.
+
+Reacting to a kick always lands late: the microphone, the bridge and the lamps
+add up to about a tenth of a second. So once a steady beat has played for
+about three seconds, `lichtorgel` follows its tempo and fires each flash
+`lead` seconds before the kick is due, falling back to reacting whenever the
+beat gets lost. The right `lead` depends on the room. Watch a track with a
+plain kick: raise `lead` if the lights trail the kick, lower it if they jump
+ahead.
+
+```powershell
+uv run python -m examples.stream_lights --area "Musikbereich" --lead 0.12
+```
 
 Audio capture, spectral analysis and visual rendering remain independently
 available for applications that need lower-level control.

@@ -20,6 +20,7 @@ _DEFAULT_RATE = 50
 _DEFAULT_SENSITIVITY = 1.2
 _DEFAULT_GAMMA = 1.0
 _DEFAULT_FLOOR = 0.12
+_DEFAULT_LEAD = 0.1
 _DEFAULT_MAX_FREQUENCY = 14_000.0
 _FAILURE_POLL_INTERVAL = 0.05
 
@@ -37,6 +38,7 @@ class Lichtorgel:
         sensitivity: float = _DEFAULT_SENSITIVITY,
         gamma: float = _DEFAULT_GAMMA,
         floor: float = _DEFAULT_FLOOR,
+        lead: float = _DEFAULT_LEAD,
         max_frequency: float = _DEFAULT_MAX_FREQUENCY,
         exclusive: bool = False,
         gain: float = 1.0,
@@ -59,6 +61,7 @@ class Lichtorgel:
         )
         self.gamma = gamma
         self.floor = floor
+        self.lead = lead
         self.stream: EntertainmentStream | None = None
         self.visual: Visual | None = None
         self._stack: AsyncExitStack | None = None
@@ -87,6 +90,7 @@ class Lichtorgel:
                 self.analyzer,
                 gamma=self.gamma,
                 floor=self.floor,
+                lead=self.lead,
             )
             stack.enter_context(self.capture)
         except BaseException:

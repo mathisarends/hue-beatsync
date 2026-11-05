@@ -15,6 +15,7 @@ _GOLDEN_ANGLE = 0.381966
 
 _DEFAULT_GAMMA = 1.0
 _DEFAULT_FLOOR = 0.18
+_DEFAULT_LEAD = 0.1
 
 _CALM_ENVELOPE = (0.12, 0.9)
 _PUNCHY_ENVELOPE = (0.045, 0.35)
@@ -51,6 +52,7 @@ class Visual:
         analyzer: SpectralAnalyzer,
         gamma: float = _DEFAULT_GAMMA,
         floor: float = _DEFAULT_FLOOR,
+        lead: float = _DEFAULT_LEAD,
     ) -> None:
         if not positions:
             raise ValueError("at least one channel position is required")
@@ -63,19 +65,19 @@ class Visual:
         self._gamma = gamma
         self._floor = floor
         self._presence = Envelope(*_PRESENCE_FADE)
-        self._seen_beats = analyzer.features.beats
+        self._beats = _BeatTrigger(analyzer, lead)
 
     def render(self, frame: Frame, tick: Tick) -> None:
         features = self._analyzer.features
-        beats = features.beats - self._seen_beats
-        self._seen_beats = features.beats
+        beat = self._beats.take(features)
         presence = _IDLE_PRESENCE if features.silent else 1.0
         self._presence.update(presence, tick.delta)
-        self.paint(frame, tick, features, beats)
+        self.paint(frame, tick, features, beat)
 
     def paint(
-        self, frame: Frame, tick: Tick, features: AudioFeatures, beats: int
+        self, frame: Frame, tick: Tick, features: AudioFeatures, beat: float | None
     ) -> None:
+        """Paint one frame. ``beat`` is the strength of a beat to show in it."""
         raise NotImplementedError
 
     def _shape(self, level: float, punch: float = 0.0) -> float:
@@ -104,8 +106,9 @@ class Spectrum(Visual):
         analyzer: SpectralAnalyzer,
         gamma: float = _DEFAULT_GAMMA,
         floor: float = _DEFAULT_FLOOR,
+        lead: float = _DEFAULT_LEAD,
     ) -> None:
-        super().__init__(positions, analyzer, gamma, floor)
+        super().__init__(positions, analyzer, gamma, floor, lead)
         ordered = sorted(self._positions, key=lambda channel: self._positions[channel])
         span = max(len(ordered) - 1, 1)
         self._slots = {
@@ -115,7 +118,7 @@ class Spectrum(Visual):
         self._envelopes = {channel: Envelope(*_CALM_ENVELOPE) for channel in ordered}
 
     def paint(
-        self, frame: Frame, tick: Tick, features: AudioFeatures, beats: int
+        self, frame: Frame, tick: Tick, features: AudioFeatures, beat: float | None
     ) -> None:
         for channel, slot in self._slots.items():
             lower = int(slot)
@@ -141,15 +144,16 @@ class Pulse(Visual):
         analyzer: SpectralAnalyzer,
         gamma: float = _DEFAULT_GAMMA,
         floor: float = _DEFAULT_FLOOR,
+        lead: float = _DEFAULT_LEAD,
     ) -> None:
-        super().__init__(positions, analyzer, gamma, floor)
+        super().__init__(positions, analyzer, gamma, floor, lead)
         self._brightness = Envelope(*_CALM_ENVELOPE)
         self._flash = Envelope(attack=0.0, release=_FLASH_RELEASE)
         self._spacing = _BeatSpacing()
         self._hue = _HueDrift()
 
     def paint(
-        self, frame: Frame, tick: Tick, features: AudioFeatures, beats: int
+        self, frame: Frame, tick: Tick, features: AudioFeatures, beat: float | None
     ) -> None:
         self._spacing.advance(tick.delta)
         # The lamps smooth every change on their own, and the bridge already
@@ -157,11 +161,9 @@ class Pulse(Visual):
         # its beat arrives in, and only its decay is smoothed here.
         self._flash.update(0.0, tick.delta)
         punch = _punch(features.percussiveness)
-        if beats:
+        if beat is not None:
             self._change_hue(features.percussiveness)
-            self._flash.hit(
-                (0.5 + 0.5 * features.beat_strength) * punch * self._spacing.take()
-            )
+            self._flash.hit((0.5 + 0.5 * beat) * punch * self._spacing.take())
         flash = self._flash.value
 
         _tune(self._brightness, features.percussiveness)
@@ -206,10 +208,11 @@ class Sweep(Visual):
         analyzer: SpectralAnalyzer,
         gamma: float = _DEFAULT_GAMMA,
         floor: float = _DEFAULT_FLOOR,
+        lead: float = _DEFAULT_LEAD,
         travel: float = 0.7,
         width: float = 0.25,
     ) -> None:
-        super().__init__(positions, analyzer, gamma, floor)
+        super().__init__(positions, analyzer, gamma, floor, lead)
         if travel <= 0:
             raise ValueError("travel must be positive")
         if width <= 0:
@@ -226,13 +229,13 @@ class Sweep(Visual):
         self._ambient = Envelope(*_CALM_ENVELOPE)
 
     def paint(
-        self, frame: Frame, tick: Tick, features: AudioFeatures, beats: int
+        self, frame: Frame, tick: Tick, features: AudioFeatures, beat: float | None
     ) -> None:
         self._spacing.advance(tick.delta)
-        if beats:
+        if beat is not None:
             if self._background.turn(_GOLDEN_ANGLE):
                 self._hue = self._background.target
-            strength = (0.55 + 0.45 * features.beat_strength) * self._spacing.take()
+            strength = (0.55 + 0.45 * beat) * self._spacing.take()
             self._waves.append(_Wave(self._hue, strength, self._start))
 
         self._advance(tick.delta)
@@ -281,6 +284,7 @@ def create_visual(
     *,
     gamma: float = _DEFAULT_GAMMA,
     floor: float = _DEFAULT_FLOOR,
+    lead: float = _DEFAULT_LEAD,
 ) -> Visual:
     """Create a visual by its public mode name."""
     try:
@@ -288,7 +292,7 @@ def create_visual(
     except KeyError as error:
         choices = ", ".join(visual_names())
         raise ValueError(f"unknown visual {name!r}; choose from {choices}") from error
-    return visual_type(positions, analyzer, gamma=gamma, floor=floor)
+    return visual_type(positions, analyzer, gamma=gamma, floor=floor, lead=lead)
 
 
 @dataclass(slots=True)
@@ -296,6 +300,48 @@ class _Wave:
     hue: float
     strength: float
     position: float
+
+
+class _BeatTrigger:
+    """Choose the frame each beat is shown in.
+
+    While the analyzer trusts its beat grid, a beat fires ``lead`` seconds
+    before it is due, which is how far the audio input, the bridge and the
+    lamps together trail the frame that carries it. Without a grid, a beat
+    fires when it is detected, which is as early as reacting gets.
+
+    The prediction is refreshed with every audio block and wobbles by a few
+    milliseconds, so a beat counts as already shown when one fired for a time
+    less than half a period away.
+    """
+
+    __slots__ = ("_analyzer", "_lead", "_seen", "_shown")
+
+    def __init__(self, analyzer: SpectralAnalyzer, lead: float) -> None:
+        if lead < 0.0:
+            raise ValueError("lead must not be negative")
+        self._analyzer = analyzer
+        self._lead = lead
+        self._seen = analyzer.features.beats
+        self._shown = -math.inf
+
+    def take(self, features: AudioFeatures) -> float | None:
+        """The strength of a beat to show in this frame, if there is one."""
+        detected = features.beats != self._seen
+        self._seen = features.beats
+        now = self._analyzer.now()
+
+        due = features.next_beat_at
+        if due is None or features.bpm is None:
+            if not detected:
+                return None
+            self._shown = now
+            return features.beat_strength
+
+        if now < due - self._lead or due - self._shown < 30.0 / features.bpm:
+            return None
+        self._shown = due
+        return features.beat_confidence
 
 
 class _BeatSpacing:

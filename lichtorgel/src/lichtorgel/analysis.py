@@ -1,12 +1,15 @@
 import math
 import statistics
+import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import pairwise
 
 import numpy as np
 
 from lichtorgel.smoothing import Envelope, PeakFollower
+from lichtorgel.tempo import BeatTracker
 
 BAND_NAMES = ("bass", "low mid", "mid", "high mid", "treble")
 
@@ -62,7 +65,7 @@ _DECISIVE_ONSET = 3.0
 _DECISIVE_PERCUSSIVENESS = 0.5
 _PERCUSSIVENESS_ATTACK = 0.25
 _PERCUSSIVENESS_RELEASE = 3.0
-_TEMPO_RANGE = (0.25, 1.2)
+_MIN_BEAT_CONFIDENCE = 0.6
 
 _SILENCE_RMS = 8e-4
 _SILENCE_HYSTERESIS = 1.25
@@ -80,6 +83,11 @@ class AudioFeatures:
     ``beats`` is a cumulative counter so slower consumers do not miss onsets.
     ``percussiveness`` says how much of a beat there is to follow at all, which
     lets a visual stay calm on material that has none.
+
+    ``next_beat_at`` is when the next beat on the tracked grid falls, on the
+    analyzer's clock (``time.monotonic`` by default). It is set together with
+    ``bpm``, and only while the grid is trusted, so a visual can fire ahead of
+    a beat instead of after it.
     """
 
     levels: tuple[float, ...]
@@ -91,6 +99,8 @@ class AudioFeatures:
     bpm: float | None
     loudness: float
     silent: bool
+    beat_confidence: float = 0.0
+    next_beat_at: float | None = None
 
     def level(self, name: str) -> float:
         return self.levels[BAND_NAMES.index(name)]
@@ -118,6 +128,7 @@ class SpectralAnalyzer:
         window_size: int = _WINDOW_SIZE,
         sensitivity: float = _DEFAULT_SENSITIVITY,
         edges: tuple[float, ...] = _BAND_EDGES,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         if samplerate <= 0:
             raise ValueError("samplerate must be positive")
@@ -141,6 +152,8 @@ class SpectralAnalyzer:
         self._energy_follower = PeakFollower()
         self._centroid = Envelope(0.12, 0.12, value=0.5)
         self._onsets = _OnsetDetector(sensitivity, frequencies)
+        self._clock = clock
+        self._tracker: BeatTracker | None = None
 
         self._features = _SILENCE
         self._elapsed = 0.0
@@ -156,6 +169,10 @@ class SpectralAnalyzer:
     def bands(self) -> tuple[tuple[float, float], ...]:
         return tuple(pairwise(self._edges))
 
+    def now(self) -> float:
+        """The current time on the clock ``next_beat_at`` is given in."""
+        return self._clock()
+
     def feed(self, block: np.ndarray, delta: float) -> None:
         self._elapsed += delta
         self._push(block)
@@ -169,6 +186,8 @@ class SpectralAnalyzer:
         levels = self._band_levels(spectrum, delta)
         energy = self._energy_follower.normalize(float(spectrum.mean()), delta)
         strength = self._onsets.feed(spectrum, self._elapsed, delta)
+        tracker = self._track(delta)
+        until_next_beat = self._until_next_beat(tracker)
 
         self._features = AudioFeatures(
             levels=levels,
@@ -179,10 +198,32 @@ class SpectralAnalyzer:
             beats=self._onsets.beats,
             beat_strength=strength,
             percussiveness=self._onsets.percussiveness,
-            bpm=self._onsets.bpm(),
+            bpm=60.0 / tracker.period if until_next_beat is not None else None,
             loudness=loudness,
             silent=False,
+            beat_confidence=tracker.confidence,
+            next_beat_at=(
+                self._clock() + until_next_beat if until_next_beat is not None else None
+            ),
         )
+
+    def _track(self, delta: float) -> BeatTracker:
+        if self._tracker is None:
+            self._tracker = BeatTracker(hop=delta)
+        self._tracker.push(self._onsets.flux, delta)
+        return self._tracker
+
+    def _until_next_beat(self, tracker: BeatTracker) -> float | None:
+        """The wait for the next beat, if there is a beat worth predicting.
+
+        A grid shows up in anything with a pulse, hi-hats and pads included.
+        Only material that also counts as percussive gets beats scheduled on it.
+        """
+        if tracker.confidence < _MIN_BEAT_CONFIDENCE:
+            return None
+        if self._onsets.percussiveness < _MIN_PERCUSSIVENESS:
+            return None
+        return tracker.until_next_beat()
 
     def _is_silent(self, loudness: float, delta: float) -> bool:
         """Whether the input has been below the gate long enough to count.
@@ -260,16 +301,21 @@ class _OnsetDetector:
         self._cymbals = np.flatnonzero((frequencies >= low) & (frequencies < high))
         self._previous = np.zeros(_ONSET_BANDS, dtype=np.float32)
         self._history: deque[float] = deque(maxlen=_FLUX_HISTORY)
-        self._beat_times: deque[float] = deque(maxlen=12)
         # Quick to rise, so the first kicks of a drop already hit, and slow to
         # fall, so a fill or a bar without drums does not calm the room down.
         self._percussiveness = Envelope(_PERCUSSIVENESS_ATTACK, _PERCUSSIVENESS_RELEASE)
         self._last_beat = -math.inf
         self._beats = 0
+        self._flux_value = 0.0
 
     @property
     def beats(self) -> int:
         return self._beats
+
+    @property
+    def flux(self) -> float:
+        """The onset strength of the latest spectrum, for tempo tracking."""
+        return self._flux_value
 
     @property
     def percussiveness(self) -> float:
@@ -277,7 +323,7 @@ class _OnsetDetector:
 
     def feed(self, spectrum: np.ndarray, elapsed: float, delta: float) -> float:
         """Consume one spectrum and return the strength of any onset in it."""
-        flux = self._flux(spectrum)
+        flux = self._flux_value = self._flux(spectrum)
         history = self._history
         history.append(flux)
         if len(history) < history.maxlen:
@@ -306,26 +352,12 @@ class _OnsetDetector:
             return 0.0
 
         self._last_beat = elapsed
-        self._beat_times.append(elapsed)
         self._beats += 1
         return min((flux - threshold) / max(threshold, 1e-6), 1.0)
 
     def settle(self, delta: float) -> float:
         """Relax toward "no beat here" while the input is silent."""
         return self._percussiveness.update(0.0, delta)
-
-    def bpm(self) -> float | None:
-        if len(self._beat_times) < 4:
-            return None
-        shortest, longest = _TEMPO_RANGE
-        gaps = [
-            second - first
-            for first, second in pairwise(self._beat_times)
-            if shortest <= second - first <= longest
-        ]
-        if len(gaps) < 3:
-            return None
-        return 60.0 / statistics.median(gaps)
 
     def _flux(self, spectrum: np.ndarray) -> float:
         bands = np.array(

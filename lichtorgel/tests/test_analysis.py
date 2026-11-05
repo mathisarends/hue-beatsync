@@ -214,3 +214,39 @@ def test_sustained_silence_is_reported():
     _feed(analyzer, np.zeros(int(rate * 3.0), dtype=np.float32), rate)
 
     assert analyzer.features.silent is True
+
+
+def _clocked_analyzer(rate=48_000):
+    """An analyzer whose clock reads the audio time fed so far."""
+    elapsed = [0.0]
+    analyzer = SpectralAnalyzer(rate, clock=lambda: elapsed[0])
+
+    def feed(samples, block=512):
+        for start in range(0, len(samples) - block, block):
+            analyzer.feed(samples[start : start + block], delta=block / rate)
+            elapsed[0] += block / rate
+
+    return analyzer, feed
+
+
+def test_analyzer_predicts_the_next_kick():
+    analyzer, feed = _clocked_analyzer()
+
+    feed(_beats(48_000, 10.0))
+
+    features = analyzer.features
+    assert features.bpm == pytest.approx(120.0, abs=0.5)
+    assert features.beat_confidence > 0.8
+    # Kicks start at 0.4 s and come every half second.
+    late = (features.next_beat_at - 0.4) % 0.5
+    assert min(late, 0.5 - late) < 0.015
+
+
+@pytest.mark.parametrize("material", [_pad, _hats])
+def test_analyzer_schedules_no_beats_on_material_without_a_kick(material):
+    analyzer, feed = _clocked_analyzer()
+
+    feed(material(48_000, 10.0))
+
+    assert analyzer.features.next_beat_at is None
+    assert analyzer.features.bpm is None

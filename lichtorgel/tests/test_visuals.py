@@ -236,3 +236,74 @@ def test_visual_rejects_invalid_configuration(positions, gamma, analyzer):
 def test_sweep_rejects_invalid_motion(travel, width, analyzer):
     with pytest.raises(ValueError):
         Sweep({1: 0.0}, analyzer, travel=travel, width=width)
+
+
+class Clock:
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        return self.now
+
+
+def predicted(due, **overrides):
+    defaults = {
+        "levels": (0.0,) * 5,
+        "energy": 0.0,
+        "beats": 0,
+        "percussiveness": 1.0,
+        "beat_confidence": 1.0,
+        "next_beat_at": due,
+    }
+    return features(**(defaults | overrides))
+
+
+def warmed_up(analyzer, **options):
+    """A pulse that has faded in, with no beat due for a long while."""
+    visual = create_visual("pulse", {1: 0.0}, analyzer, floor=0.0, **options)
+    run(visual, analyzer, predicted(100.0), seconds=2.0)
+    return visual
+
+
+def flashed(visual, analyzer, clock, snapshot, at):
+    clock.now = at
+    frame = run(visual, analyzer, snapshot, seconds=0.02)
+    return brightnesses(frame)[0] > 0.5
+
+
+@pytest.fixture
+def clock():
+    return Clock()
+
+
+@pytest.fixture
+def clocked(clock):
+    return SpectralAnalyzer(48_000, window_size=128, clock=clock)
+
+
+def test_a_predicted_beat_fires_its_lead_ahead(clocked, clock):
+    visual = warmed_up(clocked, lead=0.1)
+    beat = predicted(10.0)
+
+    assert not flashed(visual, clocked, clock, beat, at=9.88)
+    assert flashed(visual, clocked, clock, beat, at=9.91)
+
+
+def test_a_predicted_beat_fires_once_while_its_prediction_wobbles(clocked, clock):
+    visual = warmed_up(clocked, lead=0.1)
+    flashed(visual, clocked, clock, predicted(10.0), at=9.91)
+    run(visual, clocked, predicted(10.0), seconds=1.0)
+
+    assert not flashed(visual, clocked, clock, predicted(10.004), at=9.95)
+    assert flashed(visual, clocked, clock, predicted(10.5), at=10.4)
+
+
+def test_detected_beats_do_not_fire_while_beats_are_predicted(clocked, clock):
+    visual = warmed_up(clocked)
+
+    assert not flashed(visual, clocked, clock, predicted(10.0, beats=1), at=9.0)
+
+
+def test_visual_rejects_a_negative_lead(analyzer):
+    with pytest.raises(ValueError, match="lead"):
+        Pulse({1: 0.0}, analyzer, lead=-0.1)

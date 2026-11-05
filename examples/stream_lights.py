@@ -8,6 +8,7 @@ _DEFAULT_AREA = "Musikbereich"
 _DEFAULT_SENSITIVITY = 1.2
 _DEFAULT_GAMMA = 1.0
 _DEFAULT_FLOOR = 0.12
+_DEFAULT_LEAD = 0.1
 _DEFAULT_MAX_FREQUENCY = 14_000.0
 
 
@@ -27,6 +28,7 @@ async def main() -> None:
         sensitivity=args.sensitivity,
         gamma=args.gamma,
         floor=args.floor,
+        lead=args.lead,
         max_frequency=args.max_freq,
         exclusive=args.exclusive,
         gain=args.gain,
@@ -65,6 +67,12 @@ def _parse_args() -> argparse.Namespace:
         type=float,
         default=_DEFAULT_FLOOR,
         help="brightness the lamps never fall below while audio is playing",
+    )
+    parser.add_argument(
+        "--lead",
+        type=float,
+        default=_DEFAULT_LEAD,
+        help="seconds to fire ahead of a predicted beat, raise if the lights lag",
     )
     parser.add_argument(
         "--max-freq",
