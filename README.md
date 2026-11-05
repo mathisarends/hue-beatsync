@@ -1,9 +1,10 @@
-# lichtorgel
+# hue-beatsync
 
-Philips Hue lights that dance to whatever your microphone hears. `lichtorgel`
+Philips Hue lights that dance to whatever your microphone hears. hue-beatsync
 listens to live audio, finds the beat, and streams frames to a Hue
 entertainment area over the low-latency DTLS entertainment API, built on
-[hueify](https://github.com/mathisarends/hueify).
+[hueify](https://github.com/mathisarends/hueify). The audio engine is the
+`lichtorgel` package in this repo.
 
 - **On the beat.** A beat tracker follows tempo and phase, so each flash fires
   slightly *ahead* of the kick and lands with it, instead of trailing it by the
