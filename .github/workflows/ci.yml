@@ -12,6 +12,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.13", "3.14"]
+    env:
+      # .python-version pins 3.14 for local work; every uv call in a job has to
+      # use the matrix version instead, or uv run swaps the environment out.
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,13 +34,13 @@ jobs:
       # Without --all-packages, uv installs only the workspace root, which has
       # no code of its own, and neither lichtorgel nor server is importable.
       - name: Install dependencies
-        run: uv sync --all-packages --all-extras --dev --python ${{ matrix.python-version }}
+        run: uv sync --all-packages --all-extras --dev
 
       - name: Lint
-        run: uv run ruff check .
+        run: uv run --no-sync ruff check .
 
       - name: Check formatting
-        run: uv run ruff format --check .
+        run: uv run --no-sync ruff format --check .
 
       - name: Test
-        run: uv run pytest
+        run: uv run --no-sync pytest
