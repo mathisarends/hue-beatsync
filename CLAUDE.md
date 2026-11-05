@@ -21,7 +21,7 @@ unpacking a dict.
 Merge dicts with `|`, not `{**a, **b}`.
 
 Defaults belong in the model as field defaults, not in a parallel dict next to
-it (see `ResolvedSettings` in `server/src/server/schemas.py`).
+it (see `ResolvedSettings` in `hue_beatsync/server/schemas.py`).
 
 ## Imports
 
@@ -32,5 +32,5 @@ In `__init__.py` files, always use relative imports, not absolute ones.
 from .sounddevice import SoundDeviceCapture
 
 # no
-from lichtorgel.audio.sounddevice import SoundDeviceCapture
+from hue_beatsync.audio.sounddevice import SoundDeviceCapture
 ```

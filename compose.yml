@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8765:8765"
     # Hue bridge credentials (HUE_BRIDGE_IP, HUE_APP_KEY, HUE_CLIENT_KEY).
@@ -11,7 +11,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./lichtorgel.yml:/app/lichtorgel.yml
+      - ./beatsync.yml:/app/beatsync.yml
     restart: unless-stopped
     # The container has no sound hardware of its own, so /devices is empty and
     # /start cannot capture anything. On a Linux host, uncomment both lines to

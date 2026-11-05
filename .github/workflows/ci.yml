@@ -31,10 +31,8 @@ jobs:
       - name: Install PortAudio
         run: sudo apt-get update && sudo apt-get install -y libportaudio2
 
-      # Without --all-packages, uv installs only the workspace root, which has
-      # no code of its own, and neither lichtorgel nor server is importable.
       - name: Install dependencies
-        run: uv sync --all-packages --all-extras --dev
+        run: uv sync --all-extras --dev
 
       - name: Lint
         run: uv run --no-sync ruff check .

@@ -1,16 +1,33 @@
 [project]
-name = "lichtorgel-workspace"
+name = "hue-beatsync"
 version = "0.1.0"
 description = "Drive Philips Hue entertainment lights from live audio"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "dishka>=1.4.0",
+    "fastapi>=0.124.0",
+    "hueify[entertainment]",
+    "numpy>=2.5.1",
+    "pyyaml>=6.0.2",
+    "uvicorn[standard]>=0.34.0",
+]
 
-[tool.uv]
-package = false
+[project.optional-dependencies]
+sounddevice = ["sounddevice>=0.5.2"]
 
-[tool.uv.workspace]
-members = ["lichtorgel", "server"]
+# Pinned to an unreleased hueify commit for its hardened entertainment stream.
+# That commit still reports version 0.8.1, so the pin is the commit, not a
+# version range. Move back to a PyPI release once hueify publishes one.
+[tool.uv.sources]
+hueify = { git = "https://github.com/mathisarends/hueify", rev = "9f5c060c0db9d56a778589cfb70a97b285b2d4c4" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hue_beatsync"]
 
 [dependency-groups]
 dev = [
@@ -25,8 +42,21 @@ dev = [
 
 [tool.pytest.ini_options]
 minversion = "9.0"
-testpaths = ["lichtorgel/tests", "server/tests"]
+addopts = "-ra --strict-markers --strict-config --cov=hue_beatsync --cov-report=term-missing"
+testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["hue_beatsync"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+show_missing = true
 
 [tool.ruff]
 line-length = 88
